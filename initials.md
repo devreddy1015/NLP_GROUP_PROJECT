@@ -76,16 +76,18 @@ The India Post **All India Pincode Directory** (data.gov.in, GODL-India licence;
 ### 5.2 Synthetic generator
 The generator takes real geography (the PIN directory, plus OSM street, building and POI names for 3–5 cities including Bhilai / Durg / Raipur) and fills address templates with it. Labels come free because the generator knows every span. Each noise family is a switch, so it can be ablated:
 
-| ID | Noise family | Examples |
+| ID | Noise family | Transformations (each belongs to this family only; `src/generate/noise.py`) |
 |---|---|---|
-| N1 | Abbreviations | `opp.`, `nr.`, `bh.`, `apts`, `rd`, `sec.`, `B'lore`, `Hyd` |
-| N2 | Landmark phrases | near / opp / behind / beside + temple, ATM, petrol pump, bus stand; `ke paas`, `ke saamne` |
-| N3 | Reordering and dropped fields | state before city; no PIN; no state |
-| N4 | Delimiters and case | no commas, ALL CAPS, all lowercase, `-` and `/` separators |
-| N5 | Typos | inserted, deleted, substituted or swapped characters (edit operations) |
-| N6 | Script and transliteration | some words in Devanagari; spelling variants (mandir / mandeer, gali / galli) |
-| N7 | PIN variants | `490 023`, `bhilai-23`, PIN missing |
-| N8 | Indian number formats | `D.No 5-6-7/A`, `H.No 12/3`, `#12, 3rd main` |
+| N1 | Abbreviations | word table (`Road→Rd`, `Apartments→Apts`, `Sector→Sec`, `near→nr`, `opposite→Opp`, `District→Distt`, `Government→Govt`, …); city short forms (`B'lore`, `Hyd`, `Bom`, `Kol`); state codes (`CG`, `C.G.`, `MH`) |
+| N2 | Landmark phrases | relation variety (`opposite / behind / beside / next to / in front of / adjacent to / close to / back side of`); Hinglish postpositions (`X ke paas / ke samne / ke peeche / ke bagal me`); 0, 1 or 2 landmarks; two in one breath (`behind X near Y`) |
+| N3 | Reordering and dropped fields | drop house / building / street / district / city / locality / state (p = 0.2 each; never the PIN, never the place name); landmarks first, city ↔ locality, street ↔ building, district before city, or a full shuffle |
+| N4 | Delimiters and case | separator `, ` / space / ` - ` / `,` / ` / `; all lower / ALL CAPS / Title Case |
+| N5 | Typos | one or two character edits (insert, delete, substitute, swap) in words of 4+ letters; never in the PIN |
+| N6 | Spelling variants (transliteration) | `Mandir→Mandeer`, `Gali→Galli`, `Chowk→Chauk`, `Road→Rod`, `Station→Steshan`, `Hospital→Haspatal`, `Bhavan→Bhawan`, `ke paas→ke pass`, … No Devanagari (§12) |
+| N7 | PIN variants | `490 023`, `490-023`, `Pin: / Pincode 490023`, `State - 490023`, PIN before the state, `Bhilai-23`, PIN missing |
+| N8 | Indian number formats | house as `#12`, `H.No 12/3`, `D.No 5-6-7/A`, `12-3-45`, `Door No 12`, `Flat No. 3B`, `Plot No 7/2`, `Khasra No 12`, … |
+
+Families apply in the order N2, N3, N8, N7, N1, N6, N5, N4 (structure, then wording, then typos, then case and delimiters). Configs: `clean`, `full` (all eight), `full-minus-Nx` (E3), `only-Nx` (tests). Each record's `noise` field lists the families that actually changed it; on `full` each family fires on 50–98 % of addresses and every label survives in about 80 % of them.
 
 **Clean config** = all nine fields, one fixed order, commas, full words, one plain `near X` landmark, prefixed by a place name tagged O. Each transformation belongs to exactly one family (so N7 owns everything about PINs, N1 owns `B'lore`, N6 owns `ke paas` spelling variants). PINs are split 90/5/5 into train/dev/test pools with a fixed seed, so synthetic test addresses always use held-out PINs.
 
@@ -155,7 +157,7 @@ The zero-shot systems use different label sets. Map them onto ours and compare s
 - [ ] Final deadline and presentation format.
 - [x] Script scope (provisional, 10 Nov): core = Roman script and Hinglish; Devanagari items are kept in the test set as a slice; N6 is a spelling-variant table, not a transliteration model.
 - [ ] Which 3–5 cities do we take OSM names from?
-- [ ] Annotation tool: Label Studio or doccano?
+- [x] Annotation tool (10 Nov): Label Studio; config in `data/real/labelstudio_config.xml`, import/export/agreement in `src/annotate.py`.
 - [ ] Which LLM for L1 (it must run on a free T4)?
 - [x] DISTRICT stays (10 Nov): tagged only next to a cue word; otherwise CITY.
 - [ ] Mixing rule for E4 (proposed: upsample the k real addresses to about 10% of the training set; nested subsets 25 ⊂ 50 ⊂ 100 ⊂ 200). Confirm before the first E4 run.
@@ -175,6 +177,8 @@ The zero-shot systems use different label sets. Map them onto ours and compare s
 | 10 Nov 2026 | Clean config defined (all fields, fixed order, commas, full words, one `near X`); PIN split 90/5/5 with a fixed seed. | B2, B8. |
 | 10 Nov 2026 | Field-level metric = set P/R/F1 over normalised strings on shared fields. | B9. |
 | 10 Nov 2026 | Python 3.12 via `uv`; training in scripts, notebooks only call them. | Colab parity; Rule 5. |
+| 10 Nov 2026 | Noise families N1–N8 defined as the transformation list in §5.2, one family per transformation; Devanagari out. | B1, A6. |
+| 10 Nov 2026 | Label Studio for annotation. The form export must carry a `respondent` code per row so whole respondents go to one split; sloppy spans are snapped to tokens and stray commas trimmed on export. | B3, B4; the form collects no email. |
 
 ## 14. Class spreadsheet entry (paste into Group 10's row: sheet row 51)
 **Title:** Near Hanuman Mandir: Parsing and Normalising Messy Indian Addresses

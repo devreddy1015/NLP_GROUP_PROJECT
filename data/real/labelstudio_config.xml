@@ -1,0 +1,21 @@
+<!-- Label Studio labelling config for the real address set. Rules: data/real/GUIDELINES.md -->
+<View>
+  <Header value="Label whole tokens. The place's own name and announcer words (Pin:, Dist., Vill.) stay unlabelled."/>
+  <Text name="text" value="$text" granularity="word"/>
+  <Labels name="label" toName="text">
+    <Label value="HOUSE" background="#e6194b"/>
+    <Label value="BUILDING" background="#f58231"/>
+    <Label value="STREET" background="#ffe119"/>
+    <Label value="LANDMARK" background="#3cb44b"/>
+    <Label value="LOCALITY" background="#42d4f4"/>
+    <Label value="CITY" background="#4363d8"/>
+    <Label value="DISTRICT" background="#911eb4"/>
+    <Label value="STATE" background="#f032e6"/>
+    <Label value="PIN" background="#9A6324"/>
+  </Labels>
+  <Header value="Slices (tick every trait that applies)"/>
+  <Choices name="slices" toName="text" choice="multiple" showInline="true">
+    <Choice value="landmark"/><Choice value="code_mixed"/><Choice value="devanagari"/><Choice value="no_pin"/>
+    <Choice value="all_caps"/><Choice value="no_commas"/><Choice value="abbrev"/><Choice value="typo"/>
+  </Choices>
+</View>

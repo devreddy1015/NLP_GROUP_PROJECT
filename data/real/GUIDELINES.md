@@ -42,8 +42,8 @@ annotator needs at hand and every edge case we have decided. Add new cases at th
 `landmark` · `code_mixed` (Hindi words in Roman script) · `devanagari` · `no_pin` · `all_caps` · `no_commas` · `abbrev` · `typo`
 
 ## Process
-1. Split the form responses by respondent into dev / pool / test **before** anyone reads them (`build-plan.md` B3, B4).
-2. Two people label the same 50 dev items; compute agreement; fix these guidelines; then label the rest.
+1. Export the form to a CSV with one row per address and the columns `respondent, place, address, pin, city, state` (the respondent is a code, not a name), then `uv run python -m src.annotate tasks --csv form.csv --out data/real`. It drops duplicate places, keeps each respondent in one split, and writes `tasks_dev.json`, `tasks_train.json` (the real-train pool) and `tasks_test.json` for Label Studio, **before** anyone reads them (`build-plan.md` B3, B4). Load `labelstudio_config.xml` as the labelling interface.
+2. Two people label the same 50 dev items. Export each annotator's JSON, convert with `uv run python -m src.annotate export --export ls.json --out a.jsonl --annotator <id>`, then `uv run python -m src.annotate agreement a.jsonl b.jsonl`. Fix these guidelines, then label the rest.
 3. Never read test items while editing the generator or the models.
 
 ## To discuss

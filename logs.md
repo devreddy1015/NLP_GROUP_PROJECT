@@ -14,6 +14,15 @@ Newest entries first. Add one entry per work session, and one row per training o
 
 ---
 
+### 2026-11-10 (night): Claude Code, steps 7 and 8
+- **Did:** Step 8, noise families N1–N8 as pure functions in `src/generate/noise.py`, switched per config (`clean`, `full`, `full-minus-Nx` for E3, `only-Nx` for tests); the exact transformation list is in `initials.md` §5.2. Each record's `noise` field lists the families that changed it. On `full`, 400 sampled addresses: firing rates N1 0.89, N2 0.96, N3 0.93, N4 0.88, N5 0.51, N6 0.59, N7 0.98, N8 0.81; 6.5 families per address; every label present in 77–88 % of records.
+- **Did:** Step 7, `src/annotate.py` (form CSV → Label Studio tasks split by respondent and deduplicated by place; Label Studio export → our JSONL with spans snapped to tokens; agreement = strict span F1 + token Cohen's κ) and `data/real/labelstudio_config.xml`. Guidelines updated with the process.
+- **Tests:** 117 passing, 93 % coverage. Every family has a test that labels stay valid and that it changes only the records it reports.
+- **Decided (provisional):** Label Studio; the form export needs a `respondent` code column; Devanagari stays out of the generator (`initials.md` §13).
+- **Results:** none (no training runs yet).
+- **Problems:** The agreement number for step 7's gate needs real double-annotated items; the script is verified on the 20-item fixture only. Title Case noise turns `HP` into `Hp` and `B.R.` into `B.r.`; left as is, it is plausible noise. Code review (python-reviewer, 60k fuzzed addresses through N1–N8 with no failure) found no bug in the noise code; three fixes applied in `src/annotate.py` (dedupe keyed on place + city and never on blank places, every bad span reported at once, submitted all-O annotations kept).
+- **Next:** Send the form. Step 9 (CRF on `full`), step 10 (MuRIL / XLM-R; `uv sync --extra train` first, ask before the torch download), then step 11 (zero-shot E1).
+
 ### 2026-11-10 (evening): Claude Code, resuming the build for the group
 - **Did:** Built Phase 1 (`build-plan.md` §3.2 steps 1–6) on Python 3.12 / `uv`; git repo initialised.
   - `src/data.py`: labels, the one shared tokenizer, spans ↔ BIO, JSONL read/write with validation.

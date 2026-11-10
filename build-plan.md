@@ -1,6 +1,6 @@
 # Build plan and cross-check of the plan
 
-**Status 10 Nov 2026 (evening):** steps 1–6 of §3.2 are built and tested (Phase 1 gate passed: the rules baseline scores on 20 hand-labelled items, `results/20261110-rules-hand20-s0.json`). A1 (deadline) and sending the form are still open; A2–A6 were adopted as proposed and logged in `initials.md` §13. Details in `logs.md`.
+**Status 10 Nov 2026 (night):** steps 1–8 of §3.2 are built and tested; step 7's agreement number waits for real double-annotated items (the script runs on the 20-item fixture). Earlier: steps 1–6 were built and tested (Phase 1 gate passed: the rules baseline scores on 20 hand-labelled items, `results/20261110-rules-hand20-s0.json`). A1 (deadline) and sending the form are still open; A2–A6 were adopted as proposed and logged in `initials.md` §13. Details in `logs.md`.
 
 Written 10 Nov 2026 from a full read of `CLAUDE.md`, `initials.md`, `research.md`, `resources.md` and `logs.md`, plus live checks of the resources the code depends on. Nothing here changes those five files; §4 lists the edits they need once the team agrees.
 

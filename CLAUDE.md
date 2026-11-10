@@ -26,7 +26,7 @@ We tag the parts of messy Indian addresses (house, building, street, landmark, l
 **Before any task:** read `logs.md` (latest status), then `initials.md` and `research.md`.
 
 ## Status (10 Nov 2026, evening)
-Phase 1 code is built (`build-plan.md` §3.2 steps 1–6): data format and tokenizer, eval, gazetteer, generator v1 (`clean` config), rules baseline, 20 hand-labelled smoke items, guidelines v1. No real data yet. **Blocked on the team:** the deadline (`initials.md` header) and sending the Google Form. Next code: step 7 (annotation export + agreement) and step 8 (noise families).
+Steps 1–8 of `build-plan.md` §3.2 are built: data format and tokenizer, eval, gazetteer, generator with noise families N1–N8 (`clean`, `full`, `full-minus-Nx` configs), rules baseline, annotation plumbing (Label Studio config, import/export, agreement), 20 hand-labelled smoke items, guidelines v1. No real data yet. **Blocked on the team:** the deadline (`initials.md` header) and sending the Google Form (with a respondent code). Next code: step 9 (CRF) and step 10 (MuRIL / XLM-R).
 
 ## Ground rules
 1. **Privacy.** Never collect, store or commit real residential addresses, people's names or phone numbers. Real data = addresses of public places only (shops, temples, schools, hospitals, offices). The generator does not need fake names or phones either; leave them out.
@@ -78,7 +78,10 @@ Use `YYYYMMDD-<model>-<data>-s<seed>`, e.g. `20261114-muril-synfull-s42`. The re
 uv sync                                   # environment (add --extra train for torch/transformers)
 uv run pytest                             # tests + coverage (src/)
 uv run python -m src.normalize.gazetteer  # download pincode.csv -> data/gazetteer/pincodes.csv
-uv run python -m src.generate --config clean --seed 42        # 20k/2k/2k -> data/synthetic/clean/
+uv run python -m src.generate --config full --seed 42         # 20k/2k/2k -> data/synthetic/full/ (configs: clean, full, full-minus-N1..N8)
 uv run python -m src.models.rules --data <jsonl> --run-id YYYYMMDD-rules-<data>-s0   # -> results/<run-id>.json
+uv run python -m src.annotate tasks --csv form.csv --out data/real          # form CSV -> Label Studio tasks per split
+uv run python -m src.annotate export --export ls.json --out data/real/dev.jsonl [--annotator N]
+uv run python -m src.annotate agreement a.jsonl b.jsonl                      # span F1 + token kappa
 ```
-Module map: `src/data.py` (labels, tokenizer, spans↔BIO, JSONL), `src/eval/` (seqeval strict F1, field P/R/F1, bootstrap CI, slices, results writer), `src/normalize/gazetteer.py`, `src/generate/` (templates, lexicon, CLI), `src/models/rules.py` (B0).
+Module map: `src/data.py` (labels, tokenizer, spans↔BIO, JSONL), `src/eval/` (seqeval strict F1, field P/R/F1, bootstrap CI, slices, results writer), `src/normalize/gazetteer.py`, `src/generate/` (templates, lexicon, `noise.py` N1–N8, CLI), `src/models/rules.py` (B0), `src/annotate.py` (Label Studio in/out, agreement).
