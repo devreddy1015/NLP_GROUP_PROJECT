@@ -172,6 +172,7 @@ Hyperparameters and the number of epochs are fixed once, on the full-noise confi
 - [ ] Which LLM for L1 (it must run on a free T4)? Its few-shot examples come from the real-train pool, never from dev or test.
 - [x] DISTRICT stays (10 Nov): tagged only next to a cue word; otherwise CITY.
 - [ ] Mixing rule for E4 (proposed: upsample the k real addresses to about 10% of the training set; nested subsets 25 ⊂ 50 ⊂ 100 ⊂ 200). Confirm before the first E4 run.
+- [ ] M1 / M2 hyperparameters. The first full-noise MuRIL run (3 epochs, lr 5e-5, batch 32) was still improving when it stopped and scored just below the CRF on synthetic dev (0.988 against 0.992). Settle epochs and learning rate on synthetic dev, and decide on mixed precision, before any E2–E4 run (build-plan §3.3).
 
 ## 13. Decision log
 | Date | Decision | Why |
@@ -195,6 +196,7 @@ Hyperparameters and the number of epochs are fixed once, on the full-noise confi
 | 10 Nov 2026 | *Provisional.* Hyperparameters and epochs fixed once on full noise, no checkpoint picked on real dev; 3 seeds for every E3 and E4 config; a 40k-synthetic run added for H3; E1 label mappings fixed on dev; paired bootstrap for differences. | B5, B6, B13, B14. |
 | 10 Nov 2026 | *Provisional, after the second review.* Respondent split kept in `data/real/splits.json`; test set filled before the pool. Any district a PIN covers is accepted and a district is filled only when the PIN has one; a misspelt state or district is not a mismatch (similarity cut-off 0.8, untuned). Real-data intervals resample respondents; macro F1 over labels with at least 30 test spans; E5 adds swapped-in wrong PINs. | build-plan C4, C5, C7–C11. |
 | 10 Nov 2026 | *Provisional.* City names: division names lose trailing direction words; a town that several office names in a district end in becomes the city and leaves the locality. Half the named streets take a real place name. The place-name prefix stays on every synthetic address for now. | On 20 hand-written items the CRF tagged `Bhilai` as LOCALITY in 10 and `X Road` as LOCALITY in 6; 17 of the 20 start with the place name (build-plan C1, C2). |
+| 11 Nov 2026 | *Provisional.* M1 / M2 script: one training run scores every eval file; model commits are pinned; a run ID must end in `-s<seed>`; the tags predicted for each address are saved next to the results file. The hyperparameters in the script are a first guess, not yet the fixed set (§12). | A GPU run does not repeat bit for bit, and the paired bootstrap needs both systems' tags. The first run was still improving after 3 epochs. |
 
 ## 14. Class spreadsheet entry (paste into Group 10's row: sheet row 51)
 **Title:** Near Hanuman Mandir: Parsing and Normalising Messy Indian Addresses
