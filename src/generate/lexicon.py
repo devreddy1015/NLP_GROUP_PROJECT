@@ -13,7 +13,7 @@ PLACE_NAMES = [
     "Bharat Petrol Pump", "Sanjeevani Hospital", "Little Flower School", "Government Primary School",
     "Hanuman Mandir", "Jama Masjid", "St. Mary's Church", "District Library", "Post Office",
 ]
-HOUSE_WORDS = ["Flat", "House No.", "Plot No.", "Shop No.", "Door No.", "Room No.", "Office No.", "Gala No."]
+HOUSE_WORDS = ["Flat", "House No.", "Plot No.", "Shop No.", "Door No.", "Room No.", "Office No.", "Gala No.", "Plot", "Shop"]
 FLOORS = ["Ground Floor", "1st Floor", "2nd Floor", "3rd Floor", "4th Floor"]
 BUILDING_NAMES = [
     "Shanti", "Sunshine", "Green Park", "Sai", "Krishna", "Ganga", "Shivam", "Surya", "Chandra", "Kaveri",
@@ -48,7 +48,7 @@ def building(rng: random.Random) -> str:
     return f"{rng.choice(BUILDING_NAMES)} {rng.choice(BUILDING_TYPES)}"
 
 
-def street(rng: random.Random) -> str:
+def street(rng: random.Random, place: str) -> str:
     r = rng.random()
     if r < 0.15:
         return f"{ordinal(rng.randint(1, 12))} Cross"
@@ -58,7 +58,9 @@ def street(rng: random.Random) -> str:
         return f"Gali No. {rng.randint(1, 20)}"
     if r < 0.45:
         return f"NH {rng.randint(1, 99)}"
-    return f"{rng.choice(STREET_NAMES)} {rng.choice(STREET_TYPES)}"
+    # half the named streets take a real place name: with 30 fixed names a model memorises streets instead of reading "Road"
+    name = place if rng.random() < 0.5 else rng.choice(STREET_NAMES)
+    return f"{name} {rng.choice(STREET_TYPES)}"
 
 
 def ordinal(n: int) -> str:

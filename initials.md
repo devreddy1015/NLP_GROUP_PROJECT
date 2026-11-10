@@ -91,6 +91,8 @@ Families apply in the order N2, N3, N8, N7, N1, N6, N5, N4 (structure, then word
 
 **Clean config** = all nine fields, one fixed order, commas, full words, one plain `near X` landmark, prefixed by a place name tagged O. Each transformation belongs to exactly one family (so N7 owns everything about PINs, N1 owns `B'lore`, N6 owns `ke paas` spelling variants). PINs are split 90/5/5 into train/dev/test pools with a fixed seed, so synthetic test addresses always use held-out PINs.
 
+**Geography.** City = the postal division's town with direction words removed (`Mumbai City North West` → `Mumbai`), or the town that office names end in (`Supela Bhilai` → locality `Supela`, city `Bhilai`). Half the named streets take a real place name (`Junwani Road`); the rest use the fixed list. Place, landmark and building names are still short hand-written lists until OSM names are added (§12).
+
 Target: about 20k train + 2k dev + 2k test addresses per generator config.
 
 ### 5.3 Real, human-written data (the most important asset)
@@ -162,8 +164,8 @@ Hyperparameters and the number of epochs are fixed once, on the full-noise confi
 ## 12. Open decisions
 - [ ] Final deadline and presentation format.
 - [x] Script scope (provisional, 10 Nov): core = Roman script and Hinglish; Devanagari items are kept in the test set as a slice; N6 is a spelling-variant table, not a transliteration model.
-- [ ] Which 3–5 cities do we take OSM names from? Needed before E2–E4: until then the generator's names are hand-written lists of 20–40 items (build-plan C2).
-- [ ] Place-name prefix rate. Every synthetic address now starts with a place name, but the form asks for the name separately, so many real addresses will not repeat it. Proposed: the rate measured on real dev, 0.5 until then. It changes the synthetic data, so settle it before step 10 (build-plan C1).
+- [ ] Which 3–5 cities do we take OSM names from? Needed before E2–E4: place, landmark and building names are still hand-written lists of 20–40 items (build-plan C2). City and street names now come from the PIN directory.
+- [ ] Place-name prefix rate. Every synthetic address now starts with a place name, but the form asks for the name separately, so many real addresses will not repeat it. Proposed: no change until real dev shows how often the name is repeated (17 of the 20 hand-written items have it), then prefix at that rate (build-plan C1).
 - [ ] E3: add clean + one family runs next to leave-one-out? 24 more runs (build-plan C3).
 - [ ] E4 base config (proposed: `full`) and whether the k-subset changes with the seed (proposed: yes, nested within each seed).
 - [x] Annotation tool (10 Nov): Label Studio; config in `data/real/labelstudio_config.xml`, import/export/agreement in `src/annotate.py`.
@@ -192,6 +194,7 @@ Hyperparameters and the number of epochs are fixed once, on the full-noise confi
 | 10 Nov 2026 | *Provisional.* Form asks for five places in different towns per person and for PIN, city and state after the free text. The generator is tagged in git before the test items are opened. No claim on a label with fewer than about 30 test spans. | B3, B10, B11, B12. |
 | 10 Nov 2026 | *Provisional.* Hyperparameters and epochs fixed once on full noise, no checkpoint picked on real dev; 3 seeds for every E3 and E4 config; a 40k-synthetic run added for H3; E1 label mappings fixed on dev; paired bootstrap for differences. | B5, B6, B13, B14. |
 | 10 Nov 2026 | *Provisional, after the second review.* Respondent split kept in `data/real/splits.json`; test set filled before the pool. Any district a PIN covers is accepted and a district is filled only when the PIN has one; a misspelt state or district is not a mismatch (similarity cut-off 0.8, untuned). Real-data intervals resample respondents; macro F1 over labels with at least 30 test spans; E5 adds swapped-in wrong PINs. | build-plan C4, C5, C7–C11. |
+| 10 Nov 2026 | *Provisional.* City names: division names lose trailing direction words; a town that several office names in a district end in becomes the city and leaves the locality. Half the named streets take a real place name. The place-name prefix stays on every synthetic address for now. | On 20 hand-written items the CRF tagged `Bhilai` as LOCALITY in 10 and `X Road` as LOCALITY in 6; 17 of the 20 start with the place name (build-plan C1, C2). |
 
 ## 14. Class spreadsheet entry (paste into Group 10's row: sheet row 51)
 **Title:** Near Hanuman Mandir: Parsing and Normalising Messy Indian Addresses

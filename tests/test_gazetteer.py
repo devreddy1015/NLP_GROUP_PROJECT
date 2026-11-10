@@ -32,9 +32,30 @@ def test_clean_office_name(raw, clean):
     ("BANGALORE GPO DIVISION", "BENGALURU", "Bangalore"),
     ("Divisional Office Katihar", "KATIHAR", "Katihar"),
     ("NA", "WEST GODAVARI", "West Godavari"),
+    # a metro is split into several divisions; people still write the plain city
+    ("Mumbai City North West Division", "MUMBAI", "Mumbai"),
+    ("Pune Moffusil Division", "PUNE", "Pune"),
+    ("New Delhi South West Division", "NEW DELHI", "New Delhi"),
 ])
 def test_clean_city(division, district, city):
     assert clean_city(division, district) == city
+
+
+def test_build_reads_a_town_off_the_end_of_office_names(tmp_path):
+    def row(office, pin, division="Durg Division", district="DURG", state="CHHATTISGARH"):
+        return f'"x","x","{division}","{office}","{pin}","SO","Delivery","{district}","{state}","",""'
+    raw = tmp_path / "raw.csv"
+    raw.write_text("\n".join([
+        "CircleName,RegionName,DivisionName,OfficeName,Pincode,OfficeType,Delivery,District,StateName,Latitude,Longitude",
+        row("Supela Bhilai S.O", "490023"), row("Kohka Bhilai S.O", "490023"), row("Civic Centre Bhilai S.O", "490006"),
+        row("Bhilai East S.O", "490001"), row("Durg H.O", "491001"),
+        # "Halli" ends three names too, but no office is called Halli: a suffix, not a town
+        *(row(f"{v} Halli B.O", "562101", "Channapatna Division", "RAMANAGARA", "KARNATAKA") for v in ("Kali", "Mara", "Dodda")),
+    ]) + "\n")
+    city = build(raw=raw, out=tmp_path / "p.csv").set_index("office").city
+    assert city["Supela Bhilai"] == city["Kohka Bhilai"] == city["Civic Centre Bhilai"] == "Bhilai"
+    assert city["Bhilai East"] == "Durg" and city["Durg"] == "Durg"
+    assert set(city[["Kali Halli", "Mara Halli", "Dodda Halli"]]) == {"Channapatna"}
 
 
 @pytest.mark.parametrize("raw,canon", [
@@ -92,3 +113,4 @@ def test_name_sets_are_normalised(gaz):
 def test_full_gazetteer_lookup():
     hit = Gazetteer.load().lookup("490023")
     assert hit["district"] == "Durg" and hit["state"] == "Chhattisgarh" and "Supela Bhilai" in hit["offices"]
+    assert hit["city"] == "Bhilai"  # read off the office names, not the "Durg" postal division

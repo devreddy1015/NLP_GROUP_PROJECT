@@ -61,7 +61,28 @@ def clean_city(division: str, district: str) -> str:
     # shortcut: the division name stands in for the city (build-plan A4); OSM names replace it for chosen cities later
     c = re.sub(r"\b(?:Divisional Office|Division|H\.?O|G\.?P\.?O)\b\.?", " ", division, flags=re.I)
     c = re.sub(r"\s+", " ", c).strip()
+    c = re.sub(r"(?: (?:City|East|West|North|South|Central|Moffusil))+$", "", c, flags=re.I)  # "Mumbai City North West" -> "Mumbai"
     return _title(c if c and c != "NA" else district)
+
+
+_TOWN_MIN_OFFICES, _TOWN_MAX_DISTRICTS = 3, 3
+
+
+def _towns(clean: pd.DataFrame) -> pd.Series:
+    """Rows whose office name ends in a town ("Supela Bhilai", "Kohka Bhilai") -> that town, to use as the city.
+
+    shortcut: read off the directory's own names (build-plan A4); OSM place names replace it for the chosen cities.
+    A last word is a town when several offices of one district end in it, it is not a suffix found all over the
+    country ("Khurd", "Nagar"), and the district has an office named after it ("Bhilai East").
+    """
+    words = clean.office.str.split()
+    last = words.str[-1].where((words.str.len() >= 2) & words.str[-1].str.fullmatch(r"[A-Za-z]{4,}", na=False))
+    ends = clean.assign(last=last).dropna(subset="last")
+    here = ends.groupby(["district", "last"]).office.transform("nunique")
+    spread = ends.groupby("last").district.transform("nunique")
+    heads = set(zip(clean.district, words.str[0]))
+    named = pd.Series([key in heads for key in zip(ends.district, ends["last"])], index=ends.index)
+    return ends["last"][(here >= _TOWN_MIN_OFFICES) & (spread <= _TOWN_MAX_DISTRICTS) & named]
 
 
 def _title(s: str) -> str:
@@ -89,7 +110,9 @@ def build(raw: Path = RAW_PATH, out: Path = CLEAN_PATH) -> pd.DataFrame:
         "delivery": df.Delivery, "city": [clean_city(d, s) for d, s in zip(df.DivisionName, df.District)],
         "district": df.District.map(_title), "state": states, "lat": df.Latitude, "lon": df.Longitude,
     })
-    clean = clean[clean.pin.str.fullmatch(r"\d{6}")]
+    clean = clean[clean.pin.str.fullmatch(r"\d{6}")].copy()
+    towns = _towns(clean)
+    clean.loc[towns.index, "city"] = towns
     Path(out).parent.mkdir(parents=True, exist_ok=True)
     clean.to_csv(out, index=False)
     return clean

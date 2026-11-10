@@ -6,6 +6,7 @@ import pytest
 
 from src.data import LABELS, read_jsonl, tags_to_spans, tokenize, validate
 from src.generate import CONFIGS, Generator, generate, split_pins
+from src.generate import lexicon as L
 from src.normalize.gazetteer import build
 
 FIXTURE = Path("tests/fixtures/pincode_sample.csv")
@@ -38,6 +39,26 @@ def test_clean_record_prefixes_place_name_tagged_o_and_uses_cue_words(gaz_df):
     assert f"District {spans['DISTRICT']}" in rec["text"]
     assert rec["text"].endswith(f"{spans['STATE']} {spans['PIN']}")
     assert spans["PIN"] == rec["meta"]["pin"]
+
+
+def test_locality_drops_the_city_it_ends_with():
+    gaz = pd.DataFrame({"pin": ["490023", "490006", "490001"], "office": ["Supela Bhilai", "Civic Centre Bhilai", "Kohka Bhilai"],
+                        "office_type": "SO", "delivery": "Delivery", "city": "Bhilai", "district": "Durg",
+                        "state": "Chhattisgarh", "lat": "", "lon": ""})
+    rec = Generator(gaz, CONFIGS["clean"], seed=0).record("train", 0)
+    spans = {label: rec["text"][s:e] for s, e, label in tags_to_spans(tokenize(rec["text"]), rec["tags"])}
+    assert spans["CITY"] == "Bhilai" and spans["LOCALITY"] in {"Supela", "Civic Centre", "Kohka"}  # written "Supela, Bhilai"
+
+
+def test_named_streets_draw_on_real_place_names(gaz_df):
+    gen = Generator(gaz_df, CONFIGS["clean"], seed=5)
+    stems = set()
+    for i in range(300):
+        rec = gen.record("train", i)
+        stems |= {rec["text"][s:e].rsplit(" ", 1)[0] for s, e, label in tags_to_spans(tokenize(rec["text"]), rec["tags"])
+                  if label == "STREET"}
+    office_words = {office.split()[0] for office in gaz_df.office}
+    assert stems & (office_words - set(L.STREET_NAMES))  # "Kohka Road": not only the 30 fixed names a model could memorise
 
 
 def test_same_seed_same_output_different_seed_differs(gaz_df):

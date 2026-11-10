@@ -64,13 +64,15 @@ class Generator:
     def record(self, split: str, index: int) -> dict:
         rng = random.Random(f"{self.seed}:{split}:{index}")  # order-independent: record i is fixed by (seed, split, i)
         row = rng.choice(self.rows[split])
+        street_stem = rng.choice(self.rows[split])["office"].split()[0]  # a real place name: "Junwani Road"
+        locality = row["office"].removesuffix(" " + row["city"])  # "Supela Bhilai" in Bhilai is written "Supela, Bhilai"
         addr = Address((
             Part("place", ((rng.choice(L.PLACE_NAMES), None),)),
             Part("house", ((L.house(rng), "HOUSE"),)),
             Part("building", ((L.building(rng), "BUILDING"),)),
-            Part("street", ((L.street(rng), "STREET"),)),
+            Part("street", ((L.street(rng, street_stem), "STREET"),)),
             Part("landmark", ((f"near {rng.choice(L.LANDMARKS)}", "LANDMARK"),)),
-            Part("locality", ((row["office"], "LOCALITY"),)),
+            Part("locality", ((locality, "LOCALITY"),)),
             Part("city", ((row["city"], "CITY"),)),
             Part("district", (("District", None), (row["district"], "DISTRICT"))),
             Part("statepin", ((row["state"], "STATE"), (row["pin"], "PIN"))),
