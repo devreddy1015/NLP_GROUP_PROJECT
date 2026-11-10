@@ -1,0 +1,98 @@
+{
+ "run_id": "20261111-abr-parser-hand20-s0",
+ "model": "abr-parser",
+ "data": "fixtures/handlabelled20",
+ "seed": 0,
+ "config": {
+  "repo": "abr-6024/indian-address-parser-1.5B",
+  "revision": "483951f3d7855ae47e0659f34ba1d2145055dcc7",
+  "prompt": "You are an Indian address parser. Convert the address into JSON with exactly these keys: flat, building, street, landmark, area, city, state, pincode, phone. Use an empty string for anything missing. Output only JSON.",
+  "mapping": {
+   "flat": "HOUSE",
+   "building": "BUILDING",
+   "street": "STREET",
+   "landmark": "LANDMARK",
+   "area": "LOCALITY",
+   "city": "CITY",
+   "state": "STATE",
+   "pincode": "PIN"
+  },
+  "either": [
+   "CITY",
+   "DISTRICT"
+  ],
+  "shared_labels": [
+   "HOUSE",
+   "BUILDING",
+   "STREET",
+   "LANDMARK",
+   "LOCALITY",
+   "CITY",
+   "STATE",
+   "PIN"
+  ],
+  "n_shots": 0,
+  "torch": "2.15.0+cu132",
+  "transformers": "5.22.2"
+ },
+ "created": "2026-11-10T21:23:22+00:00",
+ "n": 20,
+ "json_valid": 1.0,
+ "field": {
+  "per_field": {
+   "HOUSE": {
+    "p": 0.0,
+    "r": 0.0,
+    "f1": 0.0,
+    "support": 4
+   },
+   "BUILDING": {
+    "p": 0.3333333333333333,
+    "r": 0.3333333333333333,
+    "f1": 0.3333333333333333,
+    "support": 3
+   },
+   "STREET": {
+    "p": 0.5555555555555556,
+    "r": 0.45454545454545453,
+    "f1": 0.5,
+    "support": 11
+   },
+   "LANDMARK": {
+    "p": 0.0,
+    "r": 0.0,
+    "f1": 0.0,
+    "support": 7
+   },
+   "LOCALITY": {
+    "p": 0.6111111111111112,
+    "r": 0.6470588235294118,
+    "f1": 0.6285714285714287,
+    "support": 17
+   },
+   "CITY": {
+    "p": 0.85,
+    "r": 0.85,
+    "f1": 0.85,
+    "support": 20
+   },
+   "STATE": {
+    "p": 0.55,
+    "r": 0.8461538461538461,
+    "f1": 0.6666666666666667,
+    "support": 13
+   },
+   "PIN": {
+    "p": 0.9333333333333333,
+    "r": 0.875,
+    "f1": 0.9032258064516129,
+    "support": 16
+   }
+  },
+  "micro": {
+   "p": 0.6413043478260869,
+   "r": 0.6483516483516484,
+   "f1": 0.644808743169399
+  }
+ }
+}

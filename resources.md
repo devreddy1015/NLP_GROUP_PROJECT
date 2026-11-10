@@ -15,12 +15,12 @@ The master list of external links. Add every new link to its section; if a link 
 ## 2. Open Indian-address models (zero-shot baselines)
 | Resource | Link | Used for | Licence | Check |
 |---|---|---|---|---|
-| Shiprocket IndicBERT address NER | https://huggingface.co/shiprocket-ai/open-indicbert-indian-address-ner | E1 baseline | Apache-2.0 | read |
-| Shiprocket TinyBERT address NER | https://huggingface.co/shiprocket-ai/open-tinybert-indian-address-ner | E1 baseline | Apache-2.0 | read (labels + licence, 10 Nov) |
-| MuRIL Indian address NER v1 (mukuls9971) | https://huggingface.co/mukuls9971/muril-indian-address-ner-v1 | E1 baseline; handles Hindi and Hinglish | not stated on card | read |
-| TinyBERT Indian address parser (gagan1985) | https://huggingface.co/gagan1985/tinybert-4l-312d-indian-address-parser | E1 baseline | Apache-2.0 | read (card excerpt) |
-| abr-6024 Indian address parser 1.5B (LLM) | Model: https://huggingface.co/abr-6024/indian-address-parser-1.5B · GGUF: https://huggingface.co/abr-6024/indian-address-parser-1.5B-GGUF · pip: https://pypi.org/project/india-address-parser/ | E1 baseline (generative) | Apache-2.0 (model and dataset) | loads |
-| howdoiuse-keyboard Indian address parser | https://huggingface.co/howdoiuse-keyboard/indian-address-parser-model | Possible extra baseline | MIT | read (labels, 10 Nov) |
+| Shiprocket IndicBERT address NER | https://huggingface.co/shiprocket-ai/open-indicbert-indian-address-ner | E1 baseline | Apache-2.0 (stated on the card; the hub metadata has none) | run on 11 Nov 2026 at commit `4e5d716` |
+| Shiprocket TinyBERT address NER | https://huggingface.co/shiprocket-ai/open-tinybert-indian-address-ner | E1 baseline | Apache-2.0 | run on 11 Nov 2026 at commit `fc11437` |
+| MuRIL Indian address NER v1 (mukuls9971) | https://huggingface.co/mukuls9971/muril-indian-address-ner-v1 | E1 baseline; handles Hindi and Hinglish | not stated on card or in the hub metadata | run on 11 Nov 2026 at commit `6cdb861` |
+| TinyBERT Indian address parser (gagan1985) | https://huggingface.co/gagan1985/tinybert-4l-312d-indian-address-parser | E1 baseline | Apache-2.0 | run on 11 Nov 2026 at commit `20d532b` |
+| abr-6024 Indian address parser 1.5B (LLM) | Model: https://huggingface.co/abr-6024/indian-address-parser-1.5B · GGUF: https://huggingface.co/abr-6024/indian-address-parser-1.5B-GGUF · pip: https://pypi.org/project/india-address-parser/ | E1 baseline (generative) | Apache-2.0 (model and dataset) | run on 11 Nov 2026 at commit `483951f` (3.1 GB) |
+| howdoiuse-keyboard Indian address parser | https://huggingface.co/howdoiuse-keyboard/indian-address-parser-model | Not used: its config names no architecture and its weights are pickle-only, so it cannot be loaded without its author's code | MIT | read (labels, 10 Nov; files, 11 Nov) |
 
 ## 3. Data and gazetteers
 | Resource | Link | Used for | Licence | Check |

@@ -173,6 +173,9 @@ Hyperparameters and the number of epochs are fixed once, on the full-noise confi
 - [x] DISTRICT stays (10 Nov): tagged only next to a cue word; otherwise CITY.
 - [ ] Mixing rule for E4 (proposed: upsample the k real addresses to about 10% of the training set; nested subsets 25 ⊂ 50 ⊂ 100 ⊂ 200). Confirm before the first E4 run.
 - [x] M1 hyperparameters (provisional, 11 Nov): 3 epochs, learning rate 1e-4, batch 32, mixed precision; fixed on synthetic dev with one seed (`logs.md`, §13).
+- [ ] E1: the place's own name. The existing parsers tag `Shree Sweets` as a building or house name; our gold leaves it untagged, which costs them 0.04 to 0.07 F1 on the 20 smoke items. Ignore predictions that fall inside `meta.place`? Decide on real dev, with the place-name prefix rate above.
+- [ ] E1 / E6: conventions for JSON systems. The abr-6024 parser answers `4` for `shop no 4` and `Ganesh Temple` for `opp. ganesh temple`, so HOUSE and LANDMARK score 0 at field level. Compare the number alone, and the landmark without its relation word? Decide on real dev (build-plan C6).
+- [ ] Drop `deepparse` from the Z systems? It needs a new dependency and several GB of embeddings and was trained on other countries' addresses. `howdoiuse-keyboard` is already out: it cannot be loaded without its author's code.
 - [x] M2 (XLM-R) reuses the M1 settings (provisional, 11 Nov): its first run at learning rate 1e-4 trains cleanly (synthetic dev 0.991; `logs.md`). GPU memory is tight: 7.2 of 8.2 GB.
 
 ## 13. Decision log
@@ -200,6 +203,7 @@ Hyperparameters and the number of epochs are fixed once, on the full-noise confi
 | 11 Nov 2026 | *Provisional.* M1 / M2 script: one training run scores every eval file; model commits are pinned; a run ID must end in `-s<seed>`; the tags predicted for each address are saved next to the results file. The hyperparameters in the script are a first guess, not yet the fixed set (§12). | A GPU run does not repeat bit for bit, and the paired bootstrap needs both systems' tags. The first run was still improving after 3 epochs. |
 | 11 Nov 2026 | *Provisional.* M1 hyperparameters fixed: 3 epochs, learning rate 1e-4, batch 32, linear warm-up over 10 % of steps, mixed precision (bf16) on a GPU. | Five MuRIL runs on `full`, seed 42, scored on synthetic dev. Rule set beforehand: the cheapest setting within 0.002 micro F1 of the best (0.9903 against 0.9910). Full precision gives the same score (0.9900) and takes 1.7 times as long. |
 | 11 Nov 2026 | *Provisional.* M2 (XLM-R) reuses the M1 settings unchanged. | One XLM-R run on `full`, seed 42: mean loss per epoch 0.249, 0.015, 0.005 and synthetic dev 0.991, so it does not diverge at learning rate 1e-4. §7 asks for one fixed set for both models. |
+| 11 Nov 2026 | *Provisional.* Z systems for E1: four taggers and the abr-6024 parser at pinned commits, safetensors weights only. Raw text goes in and labels are read by character offset. Each system is scored on the labels it shares with us; stray commas and brackets are trimmed from predicted spans as they are from human annotations; for JSON systems states are written in full, and the parser's `city` counts as our CITY or DISTRICT. Mappings as in `research.md` §2, to be fixed on real dev. | B9, B14, C6, and each model card. Untrimmed, two taggers lost more than half their span F1 to a comma habit. |
 
 ## 14. Class spreadsheet entry (paste into Group 10's row: sheet row 51)
 **Title:** Near Hanuman Mandir: Parsing and Normalising Messy Indian Addresses

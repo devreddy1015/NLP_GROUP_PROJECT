@@ -14,6 +14,32 @@ Newest entries first. Add one entry per work session, and one row per training o
 
 ---
 
+### 2026-11-11 (02:05–02:55): Claude Code, step 11 (existing parsers, no training) and the JSON path
+- **Did (tests first):** `src/models/zeroshot.py` (Z, E1). It runs four open address taggers at pinned commits on the raw address text, as their model cards do, and reads each token's label by character offset. Their labels are mapped onto ours with the tables in `research.md` §2. A system is scored only on the labels it shares with us (gold spans of any other label are blanked). Stray commas and brackets at span ends are dropped by the rule human annotations get (`annotate.snap_span`). Each model's own tags are saved beside ours in `<run-id>.pred.jsonl`.
+- **Did (tests first):** `src/models/llm.py`, the path for systems that answer in JSON. It runs the generative parser `abr-6024/indian-address-parser-1.5B` with the prompt from its model card, maps its keys onto our labels and scores at field level only. State names are written in full on both sides. Its `city` counts as right if it is our city or our district. The few-shot LLM (step 14) will reuse this path.
+- **Left out:** `howdoiuse-keyboard/indian-address-parser-model` cannot be loaded with standard classes (no architecture in its config, pickle-only weights). `deepparse` is not run: it needs a new dependency and several GB of embeddings, and it was trained on other countries' addresses. The team should decide whether to drop it.
+- **Review (mle-reviewer):** alignment, mappings and trimming are clean (four real tokenizers on adversarial strings; 20,000 fuzzed tag sequences). The tests were strengthened after it: they now fail if trimming is removed from `run`, if a mapping changes, if the wrong batch row is read, if the context length is ignored, or if the safe-weights flag is dropped.
+- **Tests:** 202 passing, 91 % coverage.
+- **Results:** the five rows below, all on hand20 (20 items: a check of the plumbing, never a result).
+
+  | System | Shared labels | Field micro F1 | Span micro F1 |
+  |---|---|---|---|
+  | abr-6024 parser (JSON) | 8 | 0.645 | – |
+  | Shiprocket IndicBERT | 8 | 0.591 | 0.588 |
+  | Shiprocket TinyBERT | 8 | 0.480 | 0.469 |
+  | mukuls9971 MuRIL | 9 | 0.420 | 0.418 |
+  | gagan1985 TinyBERT | 8 | 0.386 | 0.386 |
+
+  For scale, on all nine labels (span micro F1): rules 0.828, CRF 0.796, our XLM-R 0.759, our MuRIL 0.737. The label sets differ, so this is not yet a comparison.
+- **Problems (each is a scoring decision for real dev; build-plan B14, C6; `initials.md` §12):**
+  - *Commas.* Before trimming, the Shiprocket models scored 0.245 and 0.187 span F1, because they tag `Bhilai,` with its comma. Those first numbers were not kept as files; do not cite them.
+  - *The place's own name.* Our gold leaves `Shree Sweets` untagged; these models tag it as a building or a house name. The reviewer measured, in a scratch run, that ignoring those predictions lifts the four taggers by 0.04 to 0.07 F1. Real data carries the name in `meta.place`, so it can be handled once we see how often people repeat it (build-plan C1).
+  - *The parser's conventions.* It answers `4` where gold has `shop no 4`, and `Ganesh Temple` where gold has `opp. ganesh temple`. Its HOUSE and LANDMARK therefore score 0.00 at field level although the content is right.
+  - *Same-label comparison.* Our own models are not yet rescored on each system's shared labels (the second half of C6). That belongs with the tables (step 16).
+  - *Licences.* The hub metadata states none for Shiprocket IndicBERT (its card says Apache-2.0) and none for the mukuls9971 model.
+- **Downloads:** 1.4 GB for the four taggers and 3.1 GB for the parser, all safetensors, cached in `~/.cache/huggingface`.
+- **Next:** Step 12 (experiment loop; paired and respondent-level bootstrap).
+
 ### 2026-11-11 (01:40–01:55): Claude Code, first XLM-R run
 - **Did:** The tuning work is committed (`19da262`). Downloaded `FacebookAI/xlm-roberta-base` at the pinned commit (1.1 GB) and checked its tokenizer on our tokens: nothing is dropped and an address has at most 93 subwords. A comma becomes a bare `▁` followed by `,`, so the tag of a punctuation token is read from the bare `▁`.
 - **Did:** One XLM-R run on `full` (20k, seed 42) at the fixed settings, through the command line.
@@ -167,3 +193,8 @@ Log every training or evaluation run, including failed ones. Fill the **Test F1*
 | 20261111-muril-tune-e3lr1e4fp32-synfull-hand20-s42 | 2026-11-11 | M1 MuRIL, precision check (same model) | synthetic `full`, 20k | 42 | hand20 smoke set, not real dev: 0.777 / 0.700 (CI95 0.670–0.874) | – | `results/20261111-muril-tune-e3lr1e4fp32-synfull-hand20-s42.json` | exact match 0.45; 0.04 above its mixed-precision twin, which is the noise of a 20-item set |
 | 20261111-xlmr-synfull-dev-s42 | 2026-11-11 | M2 XLM-R (`FacebookAI/xlm-roberta-base` at commit `e73636d`; fixed settings: 3 epochs, lr 1e-4, batch 32, mixed precision) | synthetic `full`, 20k | 42 | synthetic `full` dev (2,000), not real dev: 0.991 / 0.991 (CI95 0.989–0.993) | – | `results/20261111-xlmr-synfull-dev-s42.json` | exact match 0.95; CITY 0.97, LOCALITY 0.96, every other label 0.996 or more; trained in 361 s; mean loss per epoch 0.249 / 0.015 / 0.005; GPU peak 7,194 MiB of 8,188; tags per address in `results/20261111-xlmr-synfull-dev-s42.pred.jsonl` |
 | 20261111-xlmr-synfull-hand20-s42 | 2026-11-11 | M2 XLM-R (same model) | synthetic `full`, 20k | 42 | hand20 smoke set, not real dev: 0.759 / 0.677 (CI95 0.677–0.840) | – | `results/20261111-xlmr-synfull-hand20-s42.json` | exact match 0.35; PIN 1.00, CITY 0.82, STATE 0.80, STREET 0.80, LANDMARK 0.67, LOCALITY 0.61, HOUSE 0.50, BUILDING 0.50, DISTRICT 0.40; between MuRIL (0.737) and the CRF (0.796), intervals overlap |
+| 20261111-shiprocket-indicbert-hand20-s0 | 2026-11-11 | Z Shiprocket IndicBERT, no training (commit `4e5d716`; 8 shared labels, no DISTRICT) | none (no training) | 0 | hand20 smoke set, not real dev: 0.588 / 0.623 (CI95 0.489–0.684) | – | `results/20261111-shiprocket-indicbert-hand20-s0.json` | field micro F1 0.591; PIN 0.93, HOUSE 0.89, STREET 0.82, LANDMARK 0.71, STATE 0.63, CITY 0.50, LOCALITY 0.40, BUILDING 0.10; shared labels only, commas trimmed |
+| 20261111-shiprocket-tinybert-hand20-s0 | 2026-11-11 | Z Shiprocket TinyBERT, no training (commit `fc11437`; 8 shared labels, no DISTRICT) | none (no training) | 0 | hand20 smoke set, not real dev: 0.469 / 0.536 (CI95 0.365–0.579) | – | `results/20261111-shiprocket-tinybert-hand20-s0.json` | field micro F1 0.480; HOUSE 1.00, PIN 0.90, LANDMARK 0.73, STREET 0.57, STATE 0.38, LOCALITY 0.33, CITY 0.21, BUILDING 0.17; shared labels only, commas trimmed |
+| 20261111-mukuls-muril-hand20-s0 | 2026-11-11 | Z mukuls9971 MuRIL address NER, no training (commit `6cdb861`; all 9 labels) | none (no training) | 0 | hand20 smoke set, not real dev: 0.418 / 0.325 (CI95 0.355–0.500) | – | `results/20261111-mukuls-muril-hand20-s0.json` | field micro F1 0.420; PIN 0.80, STATE 0.47, STREET 0.47, LOCALITY 0.40, CITY 0.33, BUILDING 0.25, HOUSE 0.20, LANDMARK 0.00, DISTRICT 0.00; commas trimmed |
+| 20261111-gagan-tinybert-hand20-s0 | 2026-11-11 | Z gagan1985 TinyBERT, no training (commit `20d532b`; 8 shared labels, no BUILDING) | none (no training) | 0 | hand20 smoke set, not real dev: 0.386 / 0.322 (CI95 0.316–0.466) | – | `results/20261111-gagan-tinybert-hand20-s0.json` | field micro F1 0.386; PIN 0.85, STREET 0.56, LOCALITY 0.41, CITY 0.31, LANDMARK 0.24, STATE 0.13, HOUSE 0.07, DISTRICT 0.00; shared labels only |
+| 20261111-abr-parser-hand20-s0 | 2026-11-11 | Z abr-6024 generative parser 1.5B, no training (commit `483951f`; JSON output, 8 shared labels) | none (no training) | 0 | hand20 smoke set, not real dev: no span F1 (JSON output); field micro F1 0.645 (P 0.641, R 0.648) | – | `results/20261111-abr-parser-hand20-s0.json` | valid JSON 20 of 20; field F1: PIN 0.90, CITY 0.85, STATE 0.67, LOCALITY 0.63, STREET 0.50, BUILDING 0.33, HOUSE 0.00, LANDMARK 0.00 (it answers `4` for `shop no 4` and drops the relation word); raw answers in `results/20261111-abr-parser-hand20-s0.pred.jsonl` |

@@ -1,0 +1,214 @@
+{
+ "run_id": "20261111-shiprocket-tinybert-hand20-s0",
+ "model": "shiprocket-tinybert",
+ "data": "fixtures/handlabelled20",
+ "seed": 0,
+ "config": {
+  "repo": "shiprocket-ai/open-tinybert-indian-address-ner",
+  "revision": "fc11437846d50eab01a65df9ec7f105495976ff8",
+  "max_len": 128,
+  "mapping": {
+   "house_details": "HOUSE",
+   "floor": "HOUSE",
+   "building_name": "BUILDING",
+   "road": "STREET",
+   "landmarks": "LANDMARK",
+   "locality": "LOCALITY",
+   "sub_locality": "LOCALITY",
+   "city": "CITY",
+   "state": "STATE",
+   "pincode": "PIN"
+  },
+  "shared_labels": [
+   "HOUSE",
+   "BUILDING",
+   "STREET",
+   "LANDMARK",
+   "LOCALITY",
+   "CITY",
+   "STATE",
+   "PIN"
+  ],
+  "torch": "2.15.0+cu132",
+  "transformers": "5.22.2"
+ },
+ "created": "2026-11-10T21:23:01+00:00",
+ "n": 20,
+ "span": {
+  "micro": {
+   "p": 0.4772727272727273,
+   "r": 0.46153846153846156,
+   "f1": 0.46927374301675984,
+   "support": 91
+  },
+  "macro": {
+   "p": 0.6680288461538462,
+   "r": 0.5485729650251709,
+   "f1": 0.5355041469940053,
+   "support": 91
+  },
+  "per_label": {
+   "BUILDING": {
+    "p": 0.1,
+    "r": 0.6666666666666666,
+    "f1": 0.1739130434782609,
+    "support": 3
+   },
+   "CITY": {
+    "p": 0.375,
+    "r": 0.15,
+    "f1": 0.21428571428571425,
+    "support": 20
+   },
+   "HOUSE": {
+    "p": 1.0,
+    "r": 1.0,
+    "f1": 1.0,
+    "support": 4
+   },
+   "LANDMARK": {
+    "p": 1.0,
+    "r": 0.5714285714285714,
+    "f1": 0.7272727272727273,
+    "support": 7
+   },
+   "LOCALITY": {
+    "p": 0.2692307692307692,
+    "r": 0.4117647058823529,
+    "f1": 0.3255813953488372,
+    "support": 17
+   },
+   "PIN": {
+    "p": 1.0,
+    "r": 0.8125,
+    "f1": 0.896551724137931,
+    "support": 16
+   },
+   "STATE": {
+    "p": 1.0,
+    "r": 0.23076923076923078,
+    "f1": 0.375,
+    "support": 13
+   },
+   "STREET": {
+    "p": 0.6,
+    "r": 0.5454545454545454,
+    "f1": 0.5714285714285713,
+    "support": 11
+   }
+  }
+ },
+ "exact_match": 0.0,
+ "field": {
+  "per_field": {
+   "HOUSE": {
+    "p": 1.0,
+    "r": 1.0,
+    "f1": 1.0,
+    "support": 4
+   },
+   "BUILDING": {
+    "p": 0.1,
+    "r": 0.6666666666666666,
+    "f1": 0.1739130434782609,
+    "support": 3
+   },
+   "STREET": {
+    "p": 0.6,
+    "r": 0.5454545454545454,
+    "f1": 0.5714285714285713,
+    "support": 11
+   },
+   "LANDMARK": {
+    "p": 1.0,
+    "r": 0.5714285714285714,
+    "f1": 0.7272727272727273,
+    "support": 7
+   },
+   "LOCALITY": {
+    "p": 0.2692307692307692,
+    "r": 0.4117647058823529,
+    "f1": 0.3255813953488372,
+    "support": 17
+   },
+   "CITY": {
+    "p": 0.5,
+    "r": 0.2,
+    "f1": 0.28571428571428575,
+    "support": 20
+   },
+   "DISTRICT": {
+    "p": 0.0,
+    "r": 0.0,
+    "f1": 0.0,
+    "support": 0
+   },
+   "STATE": {
+    "p": 1.0,
+    "r": 0.23076923076923078,
+    "f1": 0.375,
+    "support": 13
+   },
+   "PIN": {
+    "p": 1.0,
+    "r": 0.8125,
+    "f1": 0.896551724137931,
+    "support": 16
+   }
+  },
+  "micro": {
+   "p": 0.48863636363636365,
+   "r": 0.4725274725274725,
+   "f1": 0.48044692737430167
+  }
+ },
+ "ci95": [
+  0.3647058823529411,
+  0.5792349726775956
+ ],
+ "slices": {
+  "abbrev": {
+   "n": 9,
+   "f1": 0.5301204819277109
+  },
+  "all_caps": {
+   "n": 1,
+   "f1": 0.25
+  },
+  "code_mixed": {
+   "n": 1,
+   "f1": 0.0
+  },
+  "devanagari": {
+   "n": 1,
+   "f1": 0.28571428571428575
+  },
+  "landmark": {
+   "n": 7,
+   "f1": 0.4
+  },
+  "no_commas": {
+   "n": 1,
+   "f1": 0.25
+  },
+  "no_pin": {
+   "n": 4,
+   "f1": 0.14285714285714285
+  },
+  "typo": {
+   "n": 1,
+   "f1": 0.0
+  }
+ },
+ "label_support": {
+  "HOUSE": 4,
+  "BUILDING": 3,
+  "STREET": 11,
+  "LANDMARK": 7,
+  "LOCALITY": 17,
+  "CITY": 20,
+  "DISTRICT": 0,
+  "STATE": 13,
+  "PIN": 16
+ }
+}
