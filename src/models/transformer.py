@@ -24,9 +24,12 @@ MODELS = {"muril": "google/muril-base-cased", "xlmr": "FacebookAI/xlm-roberta-ba
 # hub commits, pinned so a run can be repeated (checked 11 Nov 2026); any other name or a local folder loads as it is
 REVISIONS = {"google/muril-base-cased": "afd9f36c7923d54e97903922ff1b260d091d202f",
              "FacebookAI/xlm-roberta-base": "e73636d4f797dec63c3081bb6ed5c7b0bb3f2089"}
-# shortcut: a first guess, not tuned; the first full-noise MuRIL run was still improving after 3 epochs (logs.md, 11 Nov 2026).
-# Settle them once on synthetic dev before E2-E4; after that every M1 / M2 run reuses them and none picks a checkpoint (initials.md §7)
-EPOCHS, LR, BATCH_SIZE, MAX_LEN, WARMUP, WEIGHT_DECAY, CLIP = 3, 5e-5, 32, 256, 0.1, 0.01, 1.0
+# fixed on 11 Nov 2026 with MuRIL on the full-noise config (synthetic dev, seed 42; logs.md): the cheapest setting within
+# 0.002 micro F1 of the best. Every M1 / M2 run reuses them; no run tunes them or picks a checkpoint (initials.md §7)
+EPOCHS, LR, BATCH_SIZE, MAX_LEN, WARMUP, WEIGHT_DECAY, CLIP = 3, 1e-4, 32, 256, 0.1, 0.01, 1.0
+# mixed precision (bf16 autocast, so no gradient scaler) when training on a GPU: 1.7 times faster with the same dev F1.
+# A CPU run stays in full precision
+AMP = True
 _TAG_ID = {tag: i for i, tag in enumerate(TAGS)}
 
 
@@ -62,12 +65,14 @@ def train(records: list[dict], checkpoint: str, seed: int = 42, epochs: int = EP
     opt = torch.optim.AdamW(net.parameters(), lr=lr, weight_decay=WEIGHT_DECAY)
     steps = epochs * len(loader)
     sched = transformers.get_linear_schedule_with_warmup(opt, int(WARMUP * steps), steps)
+    kind = torch.device(device).type
     net.train()
     losses = []
     for _ in range(epochs):
         total = 0.0
         for batch in loader:
-            loss = net(**{k: v.to(device) for k, v in batch.items()}).loss
+            with torch.autocast(kind, dtype=torch.bfloat16, enabled=AMP and kind == "cuda"):
+                loss = net(**{k: v.to(device) for k, v in batch.items()}).loss
             loss.backward()
             torch.nn.utils.clip_grad_norm_(net.parameters(), CLIP)
             opt.step()
@@ -109,7 +114,8 @@ def run(train_path, eval_paths, run_ids, model: str = "muril", seed: int = 42, r
     net, tok, losses = train(tr, checkpoint, seed, epochs, lr, batch_size, max_len, device)
     config = {"train": str(train_path), "n_train": len(tr), "checkpoint": checkpoint,
               "revision": REVISIONS.get(checkpoint), "epochs": epochs, "lr": lr, "batch_size": batch_size,
-              "max_len": max_len, "warmup": WARMUP, "weight_decay": WEIGHT_DECAY, "clip": CLIP, "epoch_loss": losses,
+              "max_len": max_len, "warmup": WARMUP, "weight_decay": WEIGHT_DECAY, "clip": CLIP,
+              "amp": AMP and net.device.type == "cuda", "epoch_loss": losses,
               "train_seconds": round(time.perf_counter() - start),
               "device": torch.cuda.get_device_name() if net.device.type == "cuda" else "cpu",
               "torch": torch.__version__, "transformers": transformers.__version__}

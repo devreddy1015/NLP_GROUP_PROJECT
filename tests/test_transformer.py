@@ -77,6 +77,14 @@ def test_training_overfits_twenty_addresses(trained):
     assert predict(model, tok, [short]) == predict(model, tok, [short, long])[:1]  # padding changes nothing
 
 
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="mixed precision only runs on a GPU")
+def test_training_on_the_gpu_with_mixed_precision_still_learns(tiny):
+    recs = read_jsonl(HAND20)
+    model, tok, losses = train(recs, tiny, seed=0, epochs=40, lr=1e-3, batch_size=8, device="cuda")
+    assert transformer.AMP and losses[-1] < losses[0] / 5
+    assert span_scores([r["tags"] for r in recs], predict(model, tok, recs))["micro"]["f1"] > 0.9
+
+
 def test_run_trains_once_scores_every_eval_file_and_repeats_with_the_same_seed(tiny, tmp_path, monkeypatch):
     calls = []
     monkeypatch.setattr(transformer, "train", lambda *a, **k: calls.append(a) or train(*a, **k))
@@ -87,6 +95,7 @@ def test_run_trains_once_scores_every_eval_file_and_repeats_with_the_same_seed(t
     saved = json.loads((tmp_path / "x" / f"{ids[0]}.json").read_text())
     assert saved["n"] == 20 and saved["seed"] == 1 and saved["data"] == "fixtures/handlabelled20"
     assert saved["config"]["n_train"] == 20 and saved["config"]["epochs"] == 15 and len(saved["config"]["epoch_loss"]) == 15
+    assert saved["config"]["amp"] is False  # mixed precision is a GPU setting; a CPU run must not claim it
     assert a["span"] == b["span"] and a["span"]["micro"]["f1"] > 0
     recs = read_jsonl(HAND20)
     preds = [json.loads(line) for line in (tmp_path / "x" / f"{ids[1]}.pred.jsonl").read_text().splitlines()]

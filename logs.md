@@ -14,6 +14,32 @@ Newest entries first. Add one entry per work session, and one row per training o
 
 ---
 
+### 2026-11-11 (00:40–01:35): Claude Code, M1 hyperparameters fixed, mixed precision
+- **Did:** Step 10 is committed (`f526159`). Mixed precision added to `src/models/transformer.py`, tests first: bf16 autocast when training on a GPU, recorded as `amp` in every results file; a CPU run stays in full precision. One test trains the tiny model on the GPU with it on.
+- **Did:** Five tuning runs of MuRIL on `full` (20k, seed 42), each scored on synthetic dev and hand20. They were called from Python as `run(..., epochs=E, lr=LR)`; the command line has no flags for these on purpose. The rule was set before the runs: **the cheapest setting whose synthetic-dev micro F1 is within 0.002 of the best** (0.002 is the half-width of the interval on 2,000 addresses). hand20 was scored but decided nothing.
+
+  | Epochs | Learning rate | Precision | Synthetic dev micro F1 | Training time | Mean loss, last epoch |
+  |---|---|---|---|---|---|
+  | 3 | 5e-5 | full (the first run, below) | 0.9880 | 508 s | 0.362 |
+  | 3 | 5e-5 | mixed | 0.9830 | 318 s | 0.384 |
+  | 5 | 5e-5 | mixed | 0.9910 | 527 s | 0.072 |
+  | **3** | **1e-4** | **mixed** | **0.9903** | **314 s** | 0.054 |
+  | 5 | 1e-4 | mixed | 0.9904 | 523 s | 0.014 |
+  | 3 | 1e-4 | full | 0.9900 | 532 s | 0.054 |
+
+- **Decided (provisional; row in `initials.md` §13):** 3 epochs, learning rate 1e-4, batch 32, mixed precision on. Three settings are inside the margin and this is the cheapest. Two more epochs at that rate change nothing (0.9904), so it has converged. Mixed precision costs nothing once the model converges (0.9903 against 0.9900, the same loss curve) and trains 1.7 times faster; the 0.005 gap at lr 5e-5 came from under-training.
+- **Tests:** 186 passing, 92 % coverage.
+- **Results:** the ten `muril-tune` rows below.
+- **Timing:** 314 s to train and about 8 minutes end to end at the fixed settings. 48 runs need a little over 6 hours, inside the 4–8 hour estimate (`build-plan.md` §3.3).
+- **Problems:**
+  - MuRIL still does not beat the CRF: 0.990 against 0.992 on synthetic dev, and 0.737 against 0.796 on hand20 (intervals overlap, n = 20). Real data has to settle this.
+  - hand20 cannot tell these models apart. The same setting scored 0.737 with mixed precision and 0.777 in full precision, with the same loss curve.
+  - The choice rests on one seed, and the three settings inside the margin differ by less than the interval.
+  - The rate 1e-4 was chosen on MuRIL, which starts slowly. XLM-R is not run yet and often trains badly at that rate; check its first run before reusing the settings for M2.
+  - The first-guess run keeps its rows (`20261111-muril-synfull-*-s42`); it is not at the fixed settings.
+  - The ten tuning `.pred.jsonl` files (2.9 MB) are on disk. No paired test will use them, so they need not be committed.
+- **Next:** Step 11 (zero-shot E1). A first XLM-R run. Three seeds per config once real data exists. Send the form.
+
 ### 2026-11-11 (00:00–00:35): Claude Code, step 10 (MuRIL / XLM-R training script)
 - **Did:** The generator fix below is committed (`dae3a88`).
 - **Did (tests first):** `src/models/transformer.py` (M1, M2). A plain PyTorch loop (`accelerate` is not installed, so no HF `Trainer`): AdamW, linear warm-up over the first 10 % of steps, gradient clipping at 1.0, the tag on the first subword of each token. It trains once and scores every `--eval` file with that one model, because a GPU run does not repeat bit for bit. Next to each results file it writes `<run-id>.pred.jsonl` (one `{"id", "tags"}` line per address) for the paired bootstrap. The tests use a random two-layer BERT saved to a temp folder, so they download nothing.
@@ -118,3 +144,13 @@ Log every training or evaluation run, including failed ones. Fill the **Test F1*
 | 20261110-normalizer-hand20-s0 | 2026-11-10 | Normaliser on gold tags (E5 plumbing) | none (no training) | 0 | no F1; hand20 smoke set: PIN valid 15, missing 4, not found 1, mismatch 0 | – | `results/20261110-normalizer-hand20-s0.json` | re-run after the review fixes (before: valid 14, mismatch 1); the fixture has no `meta`, so fill accuracy is not scored |
 | 20261111-muril-synfull-dev-s42 | 2026-11-11 | M1 MuRIL (`google/muril-base-cased` at commit `afd9f36`; 3 epochs, lr 5e-5, batch 32, fp32) | synthetic `full`, 20k | 42 | synthetic `full` dev (2,000), not real dev: 0.988 / 0.988 (CI95 0.986–0.990) | – | `results/20261111-muril-synfull-dev-s42.json` | exact match 0.93; CITY 0.96, LOCALITY 0.95, every other label 0.99 or more; trained in 508 s; mean loss per epoch 2.07 / 0.70 / 0.36, so still improving; first-guess hyperparameters, not the fixed set; tags per address in `results/20261111-muril-synfull-dev-s42.pred.jsonl` |
 | 20261111-muril-synfull-hand20-s42 | 2026-11-11 | M1 MuRIL (same model) | synthetic `full`, 20k | 42 | hand20 smoke set, not real dev: 0.745 / 0.676 (CI95 0.644–0.839) | – | `results/20261111-muril-synfull-hand20-s42.json` | exact match 0.40; PIN 1.00, STATE 0.89, STREET 0.79, CITY 0.78, LANDMARK 0.73, HOUSE 0.57, LOCALITY 0.48, BUILDING 0.44, DISTRICT 0.40; below the CRF's 0.796, but the intervals overlap and n = 20 |
+| 20261111-muril-tune-e3lr5e5-synfull-dev-s42 | 2026-11-11 | M1 MuRIL, tuning (3 epochs, lr 5e-5, mixed precision) | synthetic `full`, 20k | 42 | synthetic `full` dev (2,000), not real dev: 0.983 / 0.983 (CI95 0.981–0.985) | – | `results/20261111-muril-tune-e3lr5e5-synfull-dev-s42.json` | exact match 0.90; trained in 318 s; under-trained (mean loss per epoch 2.10 / 0.73 / 0.38) |
+| 20261111-muril-tune-e3lr5e5-synfull-hand20-s42 | 2026-11-11 | M1 MuRIL, tuning (same model) | synthetic `full`, 20k | 42 | hand20 smoke set, not real dev: 0.783 / 0.734 (CI95 0.680–0.884) | – | `results/20261111-muril-tune-e3lr5e5-synfull-hand20-s42.json` | exact match 0.50; not used to choose |
+| 20261111-muril-tune-e5lr5e5-synfull-dev-s42 | 2026-11-11 | M1 MuRIL, tuning (5 epochs, lr 5e-5, mixed precision) | synthetic `full`, 20k | 42 | synthetic `full` dev (2,000), not real dev: 0.991 / 0.991 (CI95 0.989–0.993) | – | `results/20261111-muril-tune-e5lr5e5-synfull-dev-s42.json` | exact match 0.95; trained in 527 s; the best score, but 0.0007 above the 3-epoch setting at lr 1e-4 |
+| 20261111-muril-tune-e5lr5e5-synfull-hand20-s42 | 2026-11-11 | M1 MuRIL, tuning (same model) | synthetic `full`, 20k | 42 | hand20 smoke set, not real dev: 0.777 / 0.694 (CI95 0.676–0.873) | – | `results/20261111-muril-tune-e5lr5e5-synfull-hand20-s42.json` | exact match 0.45; not used to choose |
+| 20261111-muril-tune-e3lr1e4-synfull-dev-s42 | 2026-11-11 | M1 MuRIL at the **fixed settings** (3 epochs, lr 1e-4, batch 32, mixed precision) | synthetic `full`, 20k | 42 | synthetic `full` dev (2,000), not real dev: 0.990 / 0.990 (CI95 0.988–0.992) | – | `results/20261111-muril-tune-e3lr1e4-synfull-dev-s42.json` | exact match 0.94; CITY 0.97, LOCALITY 0.96, every other label 0.996 or more; trained in 314 s; chosen as the cheapest setting within 0.002 of the best |
+| 20261111-muril-tune-e3lr1e4-synfull-hand20-s42 | 2026-11-11 | M1 MuRIL at the fixed settings (same model) | synthetic `full`, 20k | 42 | hand20 smoke set, not real dev: 0.737 / 0.650 (CI95 0.635–0.828) | – | `results/20261111-muril-tune-e3lr1e4-synfull-hand20-s42.json` | exact match 0.35; PIN 1.00, STATE 0.85, CITY 0.83, STREET 0.75, LANDMARK 0.62, LOCALITY 0.57, BUILDING 0.50, HOUSE 0.40, DISTRICT 0.33; below the CRF's 0.796, intervals overlap |
+| 20261111-muril-tune-e5lr1e4-synfull-dev-s42 | 2026-11-11 | M1 MuRIL, tuning (5 epochs, lr 1e-4, mixed precision) | synthetic `full`, 20k | 42 | synthetic `full` dev (2,000), not real dev: 0.990 / 0.990 (CI95 0.989–0.992) | – | `results/20261111-muril-tune-e5lr1e4-synfull-dev-s42.json` | exact match 0.95; trained in 523 s; two more epochs add nothing |
+| 20261111-muril-tune-e5lr1e4-synfull-hand20-s42 | 2026-11-11 | M1 MuRIL, tuning (same model) | synthetic `full`, 20k | 42 | hand20 smoke set, not real dev: 0.768 / 0.701 (CI95 0.667–0.859) | – | `results/20261111-muril-tune-e5lr1e4-synfull-hand20-s42.json` | exact match 0.40; not used to choose |
+| 20261111-muril-tune-e3lr1e4fp32-synfull-dev-s42 | 2026-11-11 | M1 MuRIL, precision check (3 epochs, lr 1e-4, full precision) | synthetic `full`, 20k | 42 | synthetic `full` dev (2,000), not real dev: 0.990 / 0.990 (CI95 0.988–0.992) | – | `results/20261111-muril-tune-e3lr1e4fp32-synfull-dev-s42.json` | exact match 0.95; trained in 532 s; the same score and loss curve as mixed precision, 1.7 times slower |
+| 20261111-muril-tune-e3lr1e4fp32-synfull-hand20-s42 | 2026-11-11 | M1 MuRIL, precision check (same model) | synthetic `full`, 20k | 42 | hand20 smoke set, not real dev: 0.777 / 0.700 (CI95 0.670–0.874) | – | `results/20261111-muril-tune-e3lr1e4fp32-synfull-hand20-s42.json` | exact match 0.45; 0.04 above its mixed-precision twin, which is the noise of a 20-item set |

@@ -172,7 +172,8 @@ Hyperparameters and the number of epochs are fixed once, on the full-noise confi
 - [ ] Which LLM for L1 (it must run on a free T4)? Its few-shot examples come from the real-train pool, never from dev or test.
 - [x] DISTRICT stays (10 Nov): tagged only next to a cue word; otherwise CITY.
 - [ ] Mixing rule for E4 (proposed: upsample the k real addresses to about 10% of the training set; nested subsets 25 ⊂ 50 ⊂ 100 ⊂ 200). Confirm before the first E4 run.
-- [ ] M1 / M2 hyperparameters. The first full-noise MuRIL run (3 epochs, lr 5e-5, batch 32) was still improving when it stopped and scored just below the CRF on synthetic dev (0.988 against 0.992). Settle epochs and learning rate on synthetic dev, and decide on mixed precision, before any E2–E4 run (build-plan §3.3).
+- [x] M1 hyperparameters (provisional, 11 Nov): 3 epochs, learning rate 1e-4, batch 32, mixed precision; fixed on synthetic dev with one seed (`logs.md`, §13).
+- [ ] Does M2 (XLM-R) reuse the learning rate 1e-4? It was chosen on MuRIL, which starts slowly; XLM-R often trains badly at that rate. Check its first run before any M2 result is reported.
 
 ## 13. Decision log
 | Date | Decision | Why |
@@ -197,6 +198,7 @@ Hyperparameters and the number of epochs are fixed once, on the full-noise confi
 | 10 Nov 2026 | *Provisional, after the second review.* Respondent split kept in `data/real/splits.json`; test set filled before the pool. Any district a PIN covers is accepted and a district is filled only when the PIN has one; a misspelt state or district is not a mismatch (similarity cut-off 0.8, untuned). Real-data intervals resample respondents; macro F1 over labels with at least 30 test spans; E5 adds swapped-in wrong PINs. | build-plan C4, C5, C7–C11. |
 | 10 Nov 2026 | *Provisional.* City names: division names lose trailing direction words; a town that several office names in a district end in becomes the city and leaves the locality. Half the named streets take a real place name. The place-name prefix stays on every synthetic address for now. | On 20 hand-written items the CRF tagged `Bhilai` as LOCALITY in 10 and `X Road` as LOCALITY in 6; 17 of the 20 start with the place name (build-plan C1, C2). |
 | 11 Nov 2026 | *Provisional.* M1 / M2 script: one training run scores every eval file; model commits are pinned; a run ID must end in `-s<seed>`; the tags predicted for each address are saved next to the results file. The hyperparameters in the script are a first guess, not yet the fixed set (§12). | A GPU run does not repeat bit for bit, and the paired bootstrap needs both systems' tags. The first run was still improving after 3 epochs. |
+| 11 Nov 2026 | *Provisional.* M1 hyperparameters fixed: 3 epochs, learning rate 1e-4, batch 32, linear warm-up over 10 % of steps, mixed precision (bf16) on a GPU. | Five MuRIL runs on `full`, seed 42, scored on synthetic dev. Rule set beforehand: the cheapest setting within 0.002 micro F1 of the best (0.9903 against 0.9910). Full precision gives the same score (0.9900) and takes 1.7 times as long. |
 
 ## 14. Class spreadsheet entry (paste into Group 10's row: sheet row 51)
 **Title:** Near Hanuman Mandir: Parsing and Normalising Messy Indian Addresses
