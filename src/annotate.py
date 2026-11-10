@@ -20,33 +20,44 @@ from src.eval import span_scores
 
 COLUMNS = ("respondent", "place", "address", "pin", "city", "state")
 _TRIM = {",", ";", "(", ")", "[", "]"}  # annotators often drag over a comma; dots and dashes stay (C.G., 5-6-7/A)
+# initials.md §5.3: the minimum workable set first (50 dev, 200 test, 50 pool), then up to the full target (250 test, 200 pool)
+FILL = (("dev", 50), ("test", 200), ("train", 50), ("test", 250), ("train", 200))
 
 
-def form_to_tasks(csv_path: str | Path, out_dir: str | Path, n_dev: int = 50, n_pool: int = 200, seed: int = 0) -> dict[str, int]:
-    """Write Label Studio task files per split. Whole respondents go to one split (build-plan B3, B4)."""
+def form_to_tasks(csv_path: str | Path, out_dir: str | Path, fill=FILL, seed: int = 0) -> dict[str, int]:
+    """Write Label Studio task files per split. Whole respondents go to one split (build-plan B3, B4).
+
+    The respondent -> split map is kept in <out_dir>/splits.json, so re-running on a longer CSV never moves anyone.
+    """
     df = pd.read_csv(csv_path, dtype=str, keep_default_na=False)
     missing = set(COLUMNS) - set(df.columns)
     if missing:
         raise ValueError(f"CSV is missing columns {sorted(missing)}; expected {COLUMNS}")
     df = df[df.address.str.strip() != ""]
+    if (df.respondent.str.strip() == "").any():
+        raise ValueError("every row needs a respondent code (one code per form response, not a name)")
     place, city = df.place.map(normalise_value), df.city.map(normalise_value)
     df = df[~((place + "|" + city).duplicated() & (place != ""))]  # same place in the same city once; blank places all stay
-    respondents = sorted(df.respondent.unique())
-    random.Random(seed).shuffle(respondents)
-    split_of, filled = {}, {"dev": 0, "train": 0}
-    for r in respondents:
-        n = int((df.respondent == r).sum())
-        split = "dev" if filled["dev"] < n_dev else "train" if filled["train"] < n_pool else "test"
-        split_of[r] = split
-        filled[split] = filled.get(split, 0) + n
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    split_file = out / "splits.json"
+    split_of = json.loads(split_file.read_text()) if split_file.exists() else {}
+    sizes = df.respondent.value_counts()
+    filled = {"dev": 0, "test": 0, "train": 0}
+    for r, split in split_of.items():
+        filled[split] += int(sizes.get(r, 0))
+    new = sorted(set(df.respondent) - set(split_of))
+    random.Random(seed).shuffle(new)
+    for r in new:
+        split_of[r] = next((s for s, target in fill if filled[s] < target), "test")
+        filled[split_of[r]] += int(sizes[r])
+    split_file.write_text(json.dumps(split_of, indent=1, sort_keys=True))
     tasks: dict[str, list] = {}
     for i, row in enumerate(df.itertuples(index=False), 1):
         split = split_of[row.respondent]
         data = {"item_id": f"real-{i:04d}", "text": row.address, "place": row.place, "pin": row.pin, "city": row.city,
                 "state": row.state, "respondent": row.respondent, "split": split}
         tasks.setdefault(split, []).append({"data": data})
-    out = Path(out_dir)
-    out.mkdir(parents=True, exist_ok=True)
     for split, items in tasks.items():
         (out / f"tasks_{split}.json").write_text(json.dumps(items, ensure_ascii=False, indent=1))
     return {split: len(items) for split, items in tasks.items()}
@@ -115,13 +126,12 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
     t = sub.add_parser("tasks"); t.add_argument("--csv", required=True); t.add_argument("--out", default="data/real")
-    t.add_argument("--n-dev", type=int, default=50); t.add_argument("--n-pool", type=int, default=200)
     e = sub.add_parser("export"); e.add_argument("--export", required=True); e.add_argument("--out", required=True)
     e.add_argument("--annotator", type=int, default=None)
     g = sub.add_parser("agreement"); g.add_argument("a"); g.add_argument("b")
     args = p.parse_args()
     if args.cmd == "tasks":
-        print(form_to_tasks(args.csv, args.out, args.n_dev, args.n_pool))
+        print(form_to_tasks(args.csv, args.out))
     elif args.cmd == "export":
         print(f"wrote {len(labelstudio_to_jsonl(args.export, args.out, args.annotator))} records to {args.out}")
     else:

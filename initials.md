@@ -95,9 +95,13 @@ Target: about 20k train + 2k dev + 2k test addresses per generator config.
 
 ### 5.3 Real, human-written data (the most important asset)
 - **Collect:** a Google Form asks classmates and friends to write the address of a **public place** the way they would for a courier, in free text and any style: a shop, temple, college, hospital or office. **No home addresses, names or phone numbers.**
+- **Form fields, in this order:** the place's name; the free-text address; then its PIN, city and state in separate boxes. The last three are the true values E5 scores against and go into `meta`. The form collects no email; each response gets a `respondent` code. Ask each person for five places in different towns, one of them in their home town, so the set is not all Bhilai, Durg and Raipur. Report the spread by state.
 - **Target:** about 500 addresses: 250 test, 50 dev and a 200-address real-train pool for RQ3. The minimum workable set is 200 test, 50 dev and a 50-address pool.
-- **Annotate:** in Label Studio or doccano, following `GUIDELINES.md`. Two people label the same 50 items first and report agreement (span-level F1 or Cohen's κ). Fix the guidelines, then label the rest.
+- **Split:** by respondent, never by row, after dropping duplicate places, so one person's style and one place never sit on both sides (`src/annotate.py tasks`).
+- **Protect the test set:** split before anyone reads the addresses, and annotate dev and the pool first. Tag the generator in git before the test items are opened; after that, a change to its word lists or templates must cite a dev example.
+- **Annotate:** in Label Studio, following `GUIDELINES.md`. Two people label the same 50 items first and report agreement (span-level F1 and token-level Cohen's κ). Fix the guidelines, then label the rest.
 - **Slice tags:** mark each test item with its traits (has a landmark, code-mixed, Devanagari, no PIN, ALL CAPS, …) so results can be broken down by trait.
+- **Thin labels:** public places rarely have `Flat` or `H.No.`, so HOUSE and BUILDING may be rare. Report the span count per label and make no claim about a label with fewer than about 30 test spans.
 
 ### 5.4 Secondary test set
 Use the 800-item test split of `abr-6024/indian-address-parsing-synthetic`, which includes held-out districts (`research.md` §3). Its text is synthetic, so use it for field-level checks only, never as a headline result.
@@ -118,19 +122,21 @@ The zero-shot systems use different label sets. Map them onto ours and compare s
 ## 7. Experiments
 | ID | Answers | Setup |
 |---|---|---|
-| E1 | RQ1 | All Z systems + B0 on the real test set (field level) |
+| E1 | RQ1 | All Z systems + B0 on the real test set (field level). Fix each label mapping on real dev first, then run the test set once |
 | E2 | RQ1 | M1 trained on clean vs full-noise synthetic data; scored on synthetic test and real test |
-| E3 | RQ2 | Full noise minus one family at a time (N1–N8) with M1; use B1 if GPU time runs short |
-| E4 | RQ3 | Synthetic + k real addresses (k = 0 / 25 / 50 / 100 / 200) with M1 |
-| E5 | Normaliser | PIN / district / state errors caught and fixed on the real test set |
-| E6 | LLM | L1 vs M1: F1, speed and cost |
+| E3 | RQ2 | Full noise minus one family at a time (N1–N8) with M1, 3 seeds per config; use B1 if GPU time runs short |
+| E4 | RQ3 | Synthetic + k real addresses (k = 0 / 25 / 50 / 100 / 200) with M1, 3 seeds each, nested subsets (mixing rule: §12). Plus one run on 40k synthetic with k = 0, the "double the synthetic data" side of H3 |
+| E5 | Normaliser | PIN / district / state errors caught and fixed on the real test set, scored against the form's PIN, city and state (`meta`); plus wrong PINs swapped in at a known rate (§8) |
+| E6 | LLM | L1 vs M1: field-level F1 (L1 outputs JSON, not tags), speed and cost |
+
+Hyperparameters and the number of epochs are fixed once, on the full-noise config, and reused for every M1 and M2 run. No run picks a checkpoint on real dev, so the k = 0 runs train on no real address. Real dev can still shape the generator (§5.3); the report must say so.
 
 ## 8. Evaluation
 - **Main metric:** entity-level micro and macro F1 (`seqeval`, strict IOB2), reported per label.
 - **Other metrics:** whole-address exact match; **field-level P / R / F1**: per field, compare the *sets* of predicted and gold strings after lower-casing and stripping punctuation, summed over addresses, reported on shared fields only (state names canonicalised on both sides for JSON-output systems).
 - **Breakdowns:** results per slice (§5.3) and F1 vs noise level.
-- **Stats:** 3 seeds (mean ± std) plus a bootstrap 95% CI on the test set.
-- **Normaliser:** PIN validity, PIN–locality consistency (`pin_check` passes if the locality matches any office under that PIN), PIN–district consistency, and accuracy of filled-in district / state.
+- **Stats:** 3 seeds (mean ± std) plus a bootstrap 95% CI on the test set. Differences between two systems use a paired bootstrap over the same test items (to be added to `src/eval/` with step 12); a difference whose interval includes zero is reported as "no measurable effect". On real data both bootstraps resample respondents, not single addresses: one person's five addresses are not independent. Macro F1 is taken over the labels with at least 30 test spans, the same set for every system.
+- **Normaliser:** PIN validity, PIN–locality consistency (`pin_check` passes if the locality matches any office under that PIN), PIN–district consistency (any district the PIN covers; a misspelt name is not a mismatch), and accuracy of the filled-in state. Filled districts are scored on synthetic data only, because the form has no district box. The same person types the address and the PIN, so real wrong-PIN cases will be rare: E5 also swaps in a wrong PIN at a known rate and reports how many `pin_check` catches and how many correct addresses it flags by mistake.
 
 ## 9. Deliverables
 - Report, slides and a demo (paste an address, get tags, JSON and PIN warnings).
@@ -156,9 +162,12 @@ The zero-shot systems use different label sets. Map them onto ours and compare s
 ## 12. Open decisions
 - [ ] Final deadline and presentation format.
 - [x] Script scope (provisional, 10 Nov): core = Roman script and Hinglish; Devanagari items are kept in the test set as a slice; N6 is a spelling-variant table, not a transliteration model.
-- [ ] Which 3–5 cities do we take OSM names from?
+- [ ] Which 3–5 cities do we take OSM names from? Needed before E2–E4: until then the generator's names are hand-written lists of 20–40 items (build-plan C2).
+- [ ] Place-name prefix rate. Every synthetic address now starts with a place name, but the form asks for the name separately, so many real addresses will not repeat it. Proposed: the rate measured on real dev, 0.5 until then. It changes the synthetic data, so settle it before step 10 (build-plan C1).
+- [ ] E3: add clean + one family runs next to leave-one-out? 24 more runs (build-plan C3).
+- [ ] E4 base config (proposed: `full`) and whether the k-subset changes with the seed (proposed: yes, nested within each seed).
 - [x] Annotation tool (10 Nov): Label Studio; config in `data/real/labelstudio_config.xml`, import/export/agreement in `src/annotate.py`.
-- [ ] Which LLM for L1 (it must run on a free T4)?
+- [ ] Which LLM for L1 (it must run on a free T4)? Its few-shot examples come from the real-train pool, never from dev or test.
 - [x] DISTRICT stays (10 Nov): tagged only next to a cue word; otherwise CITY.
 - [ ] Mixing rule for E4 (proposed: upsample the k real addresses to about 10% of the training set; nested subsets 25 ⊂ 50 ⊂ 100 ⊂ 200). Confirm before the first E4 run.
 
@@ -178,7 +187,11 @@ The zero-shot systems use different label sets. Map them onto ours and compare s
 | 10 Nov 2026 | Field-level metric = set P/R/F1 over normalised strings on shared fields. | B9. |
 | 10 Nov 2026 | Python 3.12 via `uv`; training in scripts, notebooks only call them. | Colab parity; Rule 5. |
 | 10 Nov 2026 | Noise families N1–N8 defined as the transformation list in §5.2, one family per transformation; Devanagari out. | B1, A6. |
+| 10 Nov 2026 | Normaliser: `pin_check` ∈ {valid, mismatch, not_found, missing}; mismatch only when the written state or district contradicts the directory; district / state are filled only on `valid`; an unknown locality is flagged (`locality_known`), not a mismatch. Abbreviation expansion is the inverse of the N1 table. | A4, B9; locality names are too varied to count as errors. |
 | 10 Nov 2026 | Label Studio for annotation. The form export must carry a `respondent` code per row so whole respondents go to one split; sloppy spans are snapped to tokens and stray commas trimmed on export. | B3, B4; the form collects no email. |
+| 10 Nov 2026 | *Provisional.* Form asks for five places in different towns per person and for PIN, city and state after the free text. The generator is tagged in git before the test items are opened. No claim on a label with fewer than about 30 test spans. | B3, B10, B11, B12. |
+| 10 Nov 2026 | *Provisional.* Hyperparameters and epochs fixed once on full noise, no checkpoint picked on real dev; 3 seeds for every E3 and E4 config; a 40k-synthetic run added for H3; E1 label mappings fixed on dev; paired bootstrap for differences. | B5, B6, B13, B14. |
+| 10 Nov 2026 | *Provisional, after the second review.* Respondent split kept in `data/real/splits.json`; test set filled before the pool. Any district a PIN covers is accepted and a district is filled only when the PIN has one; a misspelt state or district is not a mismatch (similarity cut-off 0.8, untuned). Real-data intervals resample respondents; macro F1 over labels with at least 30 test spans; E5 adds swapped-in wrong PINs. | build-plan C4, C5, C7–C11. |
 
 ## 14. Class spreadsheet entry (paste into Group 10's row: sheet row 51)
 **Title:** Near Hanuman Mandir: Parsing and Normalising Messy Indian Addresses

@@ -28,7 +28,7 @@ r7,Sai Mandir,"sai mandir bhilai",490023,Bhilai,CG
 def test_form_to_tasks_splits_by_respondent_and_dedups(tmp_path):
     csv = tmp_path / "form.csv"
     csv.write_text(CSV)
-    counts = form_to_tasks(csv, tmp_path, n_dev=2, n_pool=2, seed=0)
+    counts = form_to_tasks(csv, tmp_path, fill=(("dev", 2), ("test", 1), ("train", 2)), seed=0)
     assert sum(counts.values()) == 11  # 13 rows minus one empty address minus one duplicate place; blank places and same-name-other-city stay
     tasks = {split: json.loads((tmp_path / f"tasks_{split}.json").read_text()) for split in counts}
     by_resp = {}
@@ -43,10 +43,34 @@ def test_form_to_tasks_splits_by_respondent_and_dedups(tmp_path):
     assert len(set(ids)) == 11 and all(i.startswith("real-") for i in ids)
 
 
-def test_form_to_tasks_requires_columns(tmp_path):
+def test_form_to_tasks_fills_the_test_set_before_the_pool(tmp_path):
+    csv = tmp_path / "form.csv"
+    csv.write_text(CSV)
+    counts = form_to_tasks(csv, tmp_path, fill=(("dev", 2), ("test", 6), ("train", 2)), seed=0)
+    assert counts["dev"] >= 2 and counts["test"] >= 6 and counts["train"] >= 1  # 11 items: the pool only gets what is left
+
+
+def test_form_to_tasks_keeps_each_respondent_in_its_split_when_more_arrive(tmp_path):
+    csv = tmp_path / "form.csv"
+    csv.write_text(CSV)
+    fill = (("dev", 2), ("test", 3), ("train", 2))
+    form_to_tasks(csv, tmp_path, fill=fill, seed=0)
+    first = {t["data"]["item_id"]: split for split in ("dev", "test", "train")
+             for t in json.loads((tmp_path / f"tasks_{split}.json").read_text())}
+    csv.write_text(CSV + "".join(f'r{n},New Place {n},"new address {n}, raipur",492001,Raipur,CG\n' for n in range(8, 20)))
+    form_to_tasks(csv, tmp_path, fill=fill, seed=0)
+    second = {t["data"]["item_id"]: split for split in ("dev", "test", "train")
+              for t in json.loads((tmp_path / f"tasks_{split}.json").read_text())}
+    assert len(second) == len(first) + 12 and all(second[i] == split for i, split in first.items())
+
+
+def test_form_to_tasks_requires_columns_and_respondent_codes(tmp_path):
     csv = tmp_path / "bad.csv"
     csv.write_text("place,address\nx,y\n")
     with pytest.raises(ValueError):
+        form_to_tasks(csv, tmp_path)
+    csv.write_text(CSV + ',No Code Cafe,"somewhere, bhilai",490020,Bhilai,CG\n')
+    with pytest.raises(ValueError, match="respondent"):
         form_to_tasks(csv, tmp_path)
 
 

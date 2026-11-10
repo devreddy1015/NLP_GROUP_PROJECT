@@ -1,0 +1,36 @@
+{
+ "run_id": "20261110-normalizer-synfull-dev-s0",
+ "model": "normalizer",
+ "data": "full/dev",
+ "seed": 0,
+ "created": "2026-11-10T15:22:52+00:00",
+ "n": 2000,
+ "pin_check": {
+  "not_found": 234,
+  "valid": 1383,
+  "missing": 375,
+  "mismatch": 8
+ },
+ "filled_accuracy": {
+  "district": {
+   "n": 241,
+   "correct": 241,
+   "accuracy": 1.0
+  },
+  "state": {
+   "n": 251,
+   "correct": 251,
+   "accuracy": 1.0
+  }
+ },
+ "mismatch_ids": [
+  "syn-full-dev-000421",
+  "syn-full-dev-000581",
+  "syn-full-dev-000669",
+  "syn-full-dev-000678",
+  "syn-full-dev-000878",
+  "syn-full-dev-001278",
+  "syn-full-dev-001665",
+  "syn-full-dev-001700"
+ ]
+}

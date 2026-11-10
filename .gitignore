@@ -6,3 +6,7 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Claude Code local state (CLAUDE.md itself is the shared project rules and stays tracked)
+.claude/
+CLAUDE.local.md

@@ -72,7 +72,7 @@ def test_lookup_490023_is_supela_durg_chhattisgarh(gaz):
     hit = gaz.lookup("490023")
     assert "Supela Bhilai" in hit["offices"]
     assert hit == {"pin": "490023", "offices": ["Kohka Bhilai", "Vaishali Nagar Bhilai", "Supela Bhilai"],
-                   "city": "Durg", "district": "Durg", "state": "Chhattisgarh"}
+                   "city": "Durg", "district": "Durg", "districts": ["Durg"], "state": "Chhattisgarh"}
 
 
 def test_lookup_unknown_pin_is_none(gaz):

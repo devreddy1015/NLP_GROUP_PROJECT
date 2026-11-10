@@ -1,0 +1,26 @@
+{
+ "run_id": "20261110-normalizer-hand20-s0",
+ "model": "normalizer",
+ "data": "fixtures/handlabelled20",
+ "seed": 0,
+ "created": "2026-11-10T15:22:42+00:00",
+ "n": 20,
+ "pin_check": {
+  "valid": 15,
+  "not_found": 1,
+  "missing": 4
+ },
+ "filled_accuracy": {
+  "district": {
+   "n": 0,
+   "correct": 0,
+   "accuracy": null
+  },
+  "state": {
+   "n": 0,
+   "correct": 0,
+   "accuracy": null
+  }
+ },
+ "mismatch_ids": []
+}

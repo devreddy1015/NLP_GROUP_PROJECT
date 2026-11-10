@@ -1,6 +1,6 @@
 # Build plan and cross-check of the plan
 
-**Status 10 Nov 2026 (night):** steps 1–8 of §3.2 are built and tested; step 7's agreement number waits for real double-annotated items (the script runs on the 20-item fixture). Earlier: steps 1–6 were built and tested (Phase 1 gate passed: the rules baseline scores on 20 hand-labelled items, `results/20261110-rules-hand20-s0.json`). A1 (deadline) and sending the form are still open; A2–A6 were adopted as proposed and logged in `initials.md` §13. Details in `logs.md`.
+**Status 10 Nov 2026 (late evening):** steps 1–9 and 13 of §3.2 are built and tested (171 tests pass; CRF and normaliser runs in `logs.md`); torch + CUDA installed locally. The §4 edits are applied. A second review found 15 more problems (§2.4): six are fixed in code (C8–C12, C14), three are now rules in `initials.md` (C4, C5, C7), and C1–C3 need a team decision before step 10. Step 9's "real-dev row" still waits for real data: its two runs are on synthetic dev and the 20-item fixture. Before that: steps 1–8 were built and tested; step 7's agreement number waits for real double-annotated items (the script runs on the 20-item fixture). Earlier: steps 1–6 were built and tested (Phase 1 gate passed: the rules baseline scores on 20 hand-labelled items, `results/20261110-rules-hand20-s0.json`). A1 (deadline) and sending the form are still open; A2–A6 were adopted as proposed and logged in `initials.md` §13. Details in `logs.md`.
 
 Written 10 Nov 2026 from a full read of `CLAUDE.md`, `initials.md`, `research.md`, `resources.md` and `logs.md`, plus live checks of the resources the code depends on. Nothing here changes those five files; §4 lists the edits they need once the team agrees.
 
@@ -56,6 +56,27 @@ Written 10 Nov 2026 from a full read of `CLAUDE.md`, `initials.md`, `research.md
 - The data format has no field for test-item slices (§5.3). Add `slices`.
 - Training only in notebooks is not reproducible (Rule 5). Put training in a script; the notebook calls it.
 - BiLSTM-CRF (B2) is optional and left out of the build order below. §9 wants a BiLSTM link to the syllabus, so decide whether the report needs it.
+
+### 2.4 Found by the second review (10 Nov, late evening)
+Two independent reviews: one of the plan as amended, one of the CRF and normaliser code. Counts marked "checked" were re-run here.
+
+| # | Problem | Status |
+|---|---|---|
+| C1 | Every synthetic address starts with a place name tagged `O` (2,000 of 2,000 on `full` dev, checked). The form puts the name in its own box, so many real addresses will not repeat it, and a model can learn "the first chunk is `O`". This is the A2 fix overshooting | **Open.** Measure on real dev how often the name is repeated and prefix at that rate in every config; 0.5 until it is known. Settle before step 10: it changes the synthetic data |
+| C2 | The generator's names are short hand-written lists (32 place names, 39 landmarks, 30 streets, 20 buildings; checked), not OSM names. Vocabulary, which no noise family touches, may dominate the gap and flatten E3 | **Open**, waits on the city choice (`initials.md` §12). Add OSM names before E2–E4; report the share of real landmark and street words never seen in training |
+| C3 | Leave-one-out (E3) measures what is lost when the other seven families stay, so overlapping families hide each other. The review also found couplings: N2 off removes N6's `ke paas` variants; N3 off raises N8's firing rate | **Open.** Add clean + one family runs (the `only-Nx` configs exist; 24 more runs) and log firing rates per config |
+| C4 | The bootstrap resamples single addresses, but real data comes in groups of about five per respondent, so the intervals are too narrow | In `initials.md` §8: resample respondents. Code it with step 12 |
+| C5 | Macro F1 swings on rare labels, and DISTRICT may have almost no real spans | In `initials.md` §8: macro over the labels with at least 30 test spans |
+| C6 | Scoring for E1 and E6 is not ready: `evaluate()` always scores all nine fields; state names are not yet canonicalised for JSON-output systems; gold LANDMARK includes the relation word, so an output of `Apartments` for `Apts` counts as a miss, which is unfair to L1 and abr-6024 | **Open**, build with step 11: score each system on its shared fields and rescore M1 and B0 on the same fields; canonicalise states; prompt L1 to copy text verbatim |
+| C7 | E5 on real data: the form has no district box, so a filled district has nothing to be checked against; and the same person types the address and the PIN, so wrong PINs will be rare | In `initials.md` §7 and §8: district fill is scored on synthetic data only; add a test that swaps in wrong PINs at a known rate |
+| C8 | 1,168 of the 19,300 PINs (checked) cover more than one district. The lookup returned only the commonest one, which gave false mismatches and wrong fills | **Fixed.** Any district of the PIN is accepted; the district is filled only when the PIN has exactly one |
+| C9 | `pin_check` called a misspelt but correct state or district a mismatch. That was most of the 125 mismatches on synthetic dev | **Fixed.** Closest state name; near-identical district spelling (cut-off 0.8, not tuned). Synthetic dev now has 8 mismatches, all false alarms |
+| C10 | Filled districts were scored more strictly than `pin_check` judges them (`Bangalore` against `Bengaluru Urban` counted as wrong). A state written in Devanagari gave a false mismatch | **Fixed** |
+| C11 | `src.annotate tasks`: re-running after more responses moved respondents between splits, some from test into train; the pool filled before the test set; a blank respondent column sent every row to dev | **Fixed.** The split is kept in `data/real/splits.json` (commit it); fill order is dev 50, test 200, pool 50, test 250, pool 200; blank codes are rejected |
+| C12 | Annotators could not see the place name they must leave unlabelled | **Fixed.** Label Studio shows it above the text |
+| C13 | Duplicate places are matched on exact name and city, so `IIT Bhilai` and `Indian Institute of Technology Bhilai` both survive | **Open.** Look for them by eye while annotating |
+| C14 | CRF: `--n-train` above the train size crashed. Without `--n-train` the seed changes nothing | Crash **fixed**. Do not report a seed spread for the full-data CRF |
+| C15 | Unstated: E4's base config and whether the k-subset changes with the seed; where L1's few-shot examples come from. Synthetic test PINs are held out, but every test city, district and state also occurs in train | **Open**, listed in `initials.md` §12 |
 
 ## 3. What to code, in order
 

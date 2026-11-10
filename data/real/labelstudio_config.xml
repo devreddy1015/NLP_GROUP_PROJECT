@@ -1,6 +1,7 @@
 <!-- Label Studio labelling config for the real address set. Rules: data/real/GUIDELINES.md -->
 <View>
   <Header value="Label whole tokens. The place's own name and announcer words (Pin:, Dist., Vill.) stay unlabelled."/>
+  <Header value="Place (stays unlabelled if it appears below): $place" size="5"/>
   <Text name="text" value="$text" granularity="word"/>
   <Labels name="label" toName="text">
     <Label value="HOUSE" background="#e6194b"/>

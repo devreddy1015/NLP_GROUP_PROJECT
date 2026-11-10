@@ -115,8 +115,9 @@ class Gazetteer:
         g = self._by_pin.get(pin)
         if g is None:
             return None
-        return {"pin": pin, "offices": g.office.tolist(), "city": g.city.mode()[0],
-                "district": g.district.mode()[0], "state": g.state.mode()[0]}
+        # one PIN in 17 covers offices in more than one district: `district` is the commonest, `districts` is all of them
+        return {"pin": pin, "offices": g.office.tolist(), "city": g.city.mode()[0], "district": g.district.mode()[0],
+                "districts": sorted(g.district.unique()), "state": g.state.mode()[0]}
 
 
 if __name__ == "__main__":
