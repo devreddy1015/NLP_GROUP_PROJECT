@@ -169,7 +169,8 @@ Hyperparameters and the number of epochs are fixed once, on the full-noise confi
 - [ ] E3: add clean + one family runs next to leave-one-out? 24 more runs (build-plan C3).
 - [ ] E4 base config (proposed: `full`) and whether the k-subset changes with the seed (proposed: yes, nested within each seed).
 - [x] Annotation tool (10 Nov): Label Studio; config in `data/real/labelstudio_config.xml`, import/export/agreement in `src/annotate.py`.
-- [ ] Which LLM for L1 (it must run on a free T4)? Its few-shot examples come from the real-train pool, never from dev or test.
+- [x] LLM for L1 (provisional, 11 Nov): `Qwen/Qwen2.5-1.5B-Instruct` (Apache-2.0, 3.1 GB; it runs on a T4 and on the 4060), the base model of the abr-6024 parser; system `l1-qwen` in `src/models/llm.py`. Its few-shot examples come from the real-train pool, never from dev or test.
+- [ ] L1: how many examples, and the final prompt wording. Fix both on real dev; the smoke run used five synthetic examples.
 - [x] DISTRICT stays (10 Nov): tagged only next to a cue word; otherwise CITY.
 - [ ] Mixing rule for E4 (proposed: upsample the k real addresses to about 10% of the training set; nested subsets 25 ⊂ 50 ⊂ 100 ⊂ 200). Built as proposed in `src/mix.py` (11 Nov); confirm before the first E4 run.
 - [x] M1 hyperparameters (provisional, 11 Nov): 3 epochs, learning rate 1e-4, batch 32, mixed precision; fixed on synthetic dev with one seed (`logs.md`, §13).
@@ -206,6 +207,7 @@ Hyperparameters and the number of epochs are fixed once, on the full-noise confi
 | 11 Nov 2026 | *Provisional.* Z systems for E1: four taggers and the abr-6024 parser at pinned commits, safetensors weights only. Raw text goes in and labels are read by character offset. Each system is scored on the labels it shares with us; stray commas and brackets are trimmed from predicted spans as they are from human annotations; for JSON systems states are written in full, and the parser's `city` counts as our CITY or DISTRICT. Mappings as in `research.md` §2, to be fixed on real dev. | B9, B14, C6, and each model card. Untrimmed, two taggers lost more than half their span F1 to a comma habit. |
 | 11 Nov 2026 | *Provisional.* Experiment loop (`scripts/run_experiments.sh`): 48 runs; the three seeds are training seeds over one synthetic set (data seed 42); k = 0 in E4 is E2's full-noise run; the real test set is scored only with `--final`. E4 mixing as proposed: nested seeded subsets, repeated to about a tenth of the file. Statistics: bootstraps resample respondents on real data; differences use a paired bootstrap; macro F1 over labels with at least 30 gold spans is stored beside the plain macro. | B7, B13, C4, C5, rule 2. |
 | 11 Nov 2026 | *Provisional.* Demo: Gradio, run locally; CRF by default (no GPU), rules or a saved transformer on request; it stores nothing typed into it. | The plan named Gradio or Streamlit; Gradio has a highlighted-text view. Privacy (rule 1). |
+| 11 Nov 2026 | *Provisional.* L1 = `Qwen/Qwen2.5-1.5B-Instruct`, few-shot, with a prompt in our nine labels that asks for text copied exactly as written; examples drawn with a seed from a file that must not overlap the eval set. | An open, ungated model that fits a free T4, and the base of the abr-6024 parser, so E6 compares few-shot against fine-tuned on one base. Verbatim copying keeps field scoring fair (C6). |
 
 ## 14. Class spreadsheet entry (paste into Group 10's row: sheet row 51)
 **Title:** Near Hanuman Mandir: Parsing and Normalising Messy Indian Addresses

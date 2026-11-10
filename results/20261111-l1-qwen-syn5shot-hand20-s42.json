@@ -1,0 +1,106 @@
+{
+ "run_id": "20261111-l1-qwen-syn5shot-hand20-s42",
+ "model": "l1-qwen",
+ "data": "fixtures/handlabelled20",
+ "seed": 42,
+ "config": {
+  "repo": "Qwen/Qwen2.5-1.5B-Instruct",
+  "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+  "prompt": "You label the parts of an Indian address. Answer with one JSON object and nothing else, with exactly these keys: house, building, street, landmark, locality, city, district, state, pin. Each value is a list of the pieces of the address that belong to that key, copied exactly as written (same spelling, same abbreviations), or an empty list. Do not correct, expand or add anything. The name of the shop or place itself goes under no key.",
+  "mapping": {
+   "house": "HOUSE",
+   "building": "BUILDING",
+   "street": "STREET",
+   "landmark": "LANDMARK",
+   "locality": "LOCALITY",
+   "city": "CITY",
+   "district": "DISTRICT",
+   "state": "STATE",
+   "pin": "PIN"
+  },
+  "either": [],
+  "shared_labels": [
+   "HOUSE",
+   "BUILDING",
+   "STREET",
+   "LANDMARK",
+   "LOCALITY",
+   "CITY",
+   "DISTRICT",
+   "STATE",
+   "PIN"
+  ],
+  "n_shots": 5,
+  "shots": "data/synthetic/full/train.jsonl",
+  "seconds": 11.1,
+  "device": "cuda",
+  "torch": "2.15.0+cu132",
+  "transformers": "5.22.2"
+ },
+ "created": "2026-11-10T21:50:21+00:00",
+ "n": 20,
+ "json_valid": 1.0,
+ "field": {
+  "per_field": {
+   "HOUSE": {
+    "p": 0.0,
+    "r": 0.0,
+    "f1": 0.0,
+    "support": 4
+   },
+   "BUILDING": {
+    "p": 0.3333333333333333,
+    "r": 0.3333333333333333,
+    "f1": 0.3333333333333333,
+    "support": 3
+   },
+   "STREET": {
+    "p": 0.5,
+    "r": 0.9090909090909091,
+    "f1": 0.6451612903225806,
+    "support": 11
+   },
+   "LANDMARK": {
+    "p": 0.3125,
+    "r": 0.7142857142857143,
+    "f1": 0.43478260869565216,
+    "support": 7
+   },
+   "LOCALITY": {
+    "p": 0.36363636363636365,
+    "r": 0.23529411764705882,
+    "f1": 0.2857142857142857,
+    "support": 17
+   },
+   "CITY": {
+    "p": 0.65,
+    "r": 0.65,
+    "f1": 0.65,
+    "support": 20
+   },
+   "DISTRICT": {
+    "p": 0.1,
+    "r": 0.6666666666666666,
+    "f1": 0.1739130434782609,
+    "support": 3
+   },
+   "STATE": {
+    "p": 0.2631578947368421,
+    "r": 0.38461538461538464,
+    "f1": 0.3125,
+    "support": 13
+   },
+   "PIN": {
+    "p": 1.0,
+    "r": 0.75,
+    "f1": 0.8571428571428571,
+    "support": 16
+   }
+  },
+  "micro": {
+   "p": 0.4297520661157025,
+   "r": 0.5531914893617021,
+   "f1": 0.4837209302325582
+  }
+ }
+}

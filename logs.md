@@ -14,6 +14,21 @@ Newest entries first. Add one entry per work session, and one row per training o
 
 ---
 
+### 2026-11-11 (03:18–03:25): Claude Code, step 14 (few-shot LLM)
+- **Did (tests first):** `src/models/llm.py` gains the few-shot system `l1-qwen`: `Qwen/Qwen2.5-1.5B-Instruct` at a pinned commit (Apache-2.0, 3.1 GB; the base model the abr-6024 parser was fine-tuned from) with a prompt in our nine labels that asks for the pieces copied exactly as written. `--shots FILE --n-shots N --seed S` draws the examples. An example that is also in the eval file is refused (rule 2), and the run ID must end in `-s<seed>`. An answer may hold a list per key. Each results file records the generation time.
+- **Results (hand20; a smoke check):** the two `l1-qwen` rows below.
+  - Five examples drawn from synthetic `full` train, a stand-in because there is no real-train pool yet: valid JSON 20 of 20, field micro F1 0.484, 11.1 s for 20 addresses on the RTX 4060.
+  - No examples: valid JSON 9 of 20, field micro F1 0.288.
+  - Scored the same way on the same nine labels (`report/tables/shared.md`): CRF 0.842, rules 0.828, XLM-R 0.768, MuRIL at the fixed settings 0.758.
+- **Decided (provisional; `initials.md` §12, §13):** the L1 model and prompt above.
+- **Problems:**
+  - The examples must come from the real-train pool, and the prompt may be changed on real dev only. Both wait for data.
+  - The prompt was reworded once on hand20 ("one JSON object") after the no-example run answered with bare lists. The first version's files were overwritten and are not cited.
+  - M1's speed at inference is not recorded yet, so E6's speed comparison has only L1's side.
+  - Generation stops at 200 new tokens; a very long address could be cut off.
+- **Tests:** 236 passing, 91 % coverage.
+- **Next:** all 16 build steps now exist in code. What is left needs real data: send the form, annotate, then `scripts/run_experiments.sh`, E1, E5 and E6 on real dev and test, and the report.
+
 ### 2026-11-11 (03:10–03:18): Claude Code, step 15 (demo)
 - **Did (tests first):** `app/demo.py`. `parse(text, tagger, gaz)` returns the whole address as labelled pieces, the normaliser's JSON and plain notes about the PIN (missing, not in the directory, contradicts the written state or district, district and state filled in). Three taggers plug in: rules (starts at once), CRF (trained on `full` at start, about a minute; the default) and a saved transformer folder. The page is Gradio, as the plan says; it stores nothing a visitor types and reports no analytics.
 - **Did:** `src/models/transformer.py --save-dir` keeps the trained model. A test checks that the saved model reproduces exactly the tags the run was scored on.
@@ -235,3 +250,5 @@ Log every training or evaluation run, including failed ones. Fill the **Test F1*
 | 20261111-mukuls-muril-hand20-s0 | 2026-11-11 | Z mukuls9971 MuRIL address NER, no training (commit `6cdb861`; all 9 labels) | none (no training) | 0 | hand20 smoke set, not real dev: 0.418 / 0.325 (CI95 0.355–0.500) | – | `results/20261111-mukuls-muril-hand20-s0.json` | field micro F1 0.420; PIN 0.80, STATE 0.47, STREET 0.47, LOCALITY 0.40, CITY 0.33, BUILDING 0.25, HOUSE 0.20, LANDMARK 0.00, DISTRICT 0.00; commas trimmed |
 | 20261111-gagan-tinybert-hand20-s0 | 2026-11-11 | Z gagan1985 TinyBERT, no training (commit `20d532b`; 8 shared labels, no BUILDING) | none (no training) | 0 | hand20 smoke set, not real dev: 0.386 / 0.322 (CI95 0.316–0.466) | – | `results/20261111-gagan-tinybert-hand20-s0.json` | field micro F1 0.386; PIN 0.85, STREET 0.56, LOCALITY 0.41, CITY 0.31, LANDMARK 0.24, STATE 0.13, HOUSE 0.07, DISTRICT 0.00; shared labels only |
 | 20261111-abr-parser-hand20-s0 | 2026-11-11 | Z abr-6024 generative parser 1.5B, no training (commit `483951f`; JSON output, 8 shared labels) | none (no training) | 0 | hand20 smoke set, not real dev: no span F1 (JSON output); field micro F1 0.645 (P 0.641, R 0.648) | – | `results/20261111-abr-parser-hand20-s0.json` | valid JSON 20 of 20; field F1: PIN 0.90, CITY 0.85, STATE 0.67, LOCALITY 0.63, STREET 0.50, BUILDING 0.33, HOUSE 0.00, LANDMARK 0.00 (it answers `4` for `shop no 4` and drops the relation word); raw answers in `results/20261111-abr-parser-hand20-s0.pred.jsonl` |
+| 20261111-l1-qwen-syn5shot-hand20-s42 | 2026-11-11 | L1 few-shot LLM (`Qwen/Qwen2.5-1.5B-Instruct` at commit `989aa79`; 5 examples from synthetic `full` train, seed 42) | none (no training) | 42 | hand20 smoke set, not real dev: no span F1 (JSON output); field micro F1 0.484 (P 0.430, R 0.553) | – | `results/20261111-l1-qwen-syn5shot-hand20-s42.json` | valid JSON 20 of 20; 11.1 s for 20 addresses; PIN 0.86, STREET 0.65, CITY 0.65, LANDMARK 0.43, BUILDING 0.33, STATE 0.31, LOCALITY 0.29, DISTRICT 0.17, HOUSE 0.00; the examples are synthetic stand-ins for the real-train pool |
+| 20261111-l1-qwen-0shot-hand20-s42 | 2026-11-11 | L1 LLM with no examples (same model and prompt) | none (no training) | 42 | hand20 smoke set, not real dev: no span F1 (JSON output); field micro F1 0.288 (P 0.373, R 0.234) | – | `results/20261111-l1-qwen-0shot-hand20-s42.json` | valid JSON 9 of 20; 6.7 s for 20 addresses; PIN 0.55, STREET 0.50, CITY 0.48, BUILDING 0.25, LOCALITY 0.19, LANDMARK 0.12, HOUSE, DISTRICT and STATE 0.00 |

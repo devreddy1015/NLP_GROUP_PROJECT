@@ -1,0 +1,106 @@
+{
+ "run_id": "20261111-l1-qwen-0shot-hand20-s42",
+ "model": "l1-qwen",
+ "data": "fixtures/handlabelled20",
+ "seed": 42,
+ "config": {
+  "repo": "Qwen/Qwen2.5-1.5B-Instruct",
+  "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+  "prompt": "You label the parts of an Indian address. Answer with one JSON object and nothing else, with exactly these keys: house, building, street, landmark, locality, city, district, state, pin. Each value is a list of the pieces of the address that belong to that key, copied exactly as written (same spelling, same abbreviations), or an empty list. Do not correct, expand or add anything. The name of the shop or place itself goes under no key.",
+  "mapping": {
+   "house": "HOUSE",
+   "building": "BUILDING",
+   "street": "STREET",
+   "landmark": "LANDMARK",
+   "locality": "LOCALITY",
+   "city": "CITY",
+   "district": "DISTRICT",
+   "state": "STATE",
+   "pin": "PIN"
+  },
+  "either": [],
+  "shared_labels": [
+   "HOUSE",
+   "BUILDING",
+   "STREET",
+   "LANDMARK",
+   "LOCALITY",
+   "CITY",
+   "DISTRICT",
+   "STATE",
+   "PIN"
+  ],
+  "n_shots": 0,
+  "shots": null,
+  "seconds": 6.7,
+  "device": "cuda",
+  "torch": "2.15.0+cu132",
+  "transformers": "5.22.2"
+ },
+ "created": "2026-11-10T21:50:37+00:00",
+ "n": 20,
+ "json_valid": 0.45,
+ "field": {
+  "per_field": {
+   "HOUSE": {
+    "p": 0.0,
+    "r": 0.0,
+    "f1": 0.0,
+    "support": 4
+   },
+   "BUILDING": {
+    "p": 0.2,
+    "r": 0.3333333333333333,
+    "f1": 0.25,
+    "support": 3
+   },
+   "STREET": {
+    "p": 0.5555555555555556,
+    "r": 0.45454545454545453,
+    "f1": 0.5,
+    "support": 11
+   },
+   "LANDMARK": {
+    "p": 0.1111111111111111,
+    "r": 0.14285714285714285,
+    "f1": 0.125,
+    "support": 7
+   },
+   "LOCALITY": {
+    "p": 0.5,
+    "r": 0.11764705882352941,
+    "f1": 0.19047619047619047,
+    "support": 17
+   },
+   "CITY": {
+    "p": 0.7777777777777778,
+    "r": 0.35,
+    "f1": 0.48275862068965514,
+    "support": 20
+   },
+   "DISTRICT": {
+    "p": 0.0,
+    "r": 0.0,
+    "f1": 0.0,
+    "support": 3
+   },
+   "STATE": {
+    "p": 0.0,
+    "r": 0.0,
+    "f1": 0.0,
+    "support": 13
+   },
+   "PIN": {
+    "p": 1.0,
+    "r": 0.375,
+    "f1": 0.5454545454545454,
+    "support": 16
+   }
+  },
+  "micro": {
+   "p": 0.3728813559322034,
+   "r": 0.23404255319148937,
+   "f1": 0.28758169934640526
+  }
+ }
+}

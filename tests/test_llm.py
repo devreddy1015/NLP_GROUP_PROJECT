@@ -5,9 +5,9 @@ import pytest
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BertTokenizerFast, GPT2Config, GPT2LMHeadModel
 
-from src.data import read_jsonl
+from src.data import LABELS, read_jsonl, write_jsonl
 from src.models import llm
-from src.models.llm import SYSTEMS, System, fold, generate, gold_fields, messages, parse_json, run, to_fields
+from src.models.llm import SYSTEMS, System, answer, fold, generate, gold_fields, messages, parse_json, run, to_fields
 
 HAND20 = Path("tests/fixtures/handlabelled20.jsonl")
 ABR = SYSTEMS["abr-parser"]
@@ -46,6 +46,21 @@ def test_to_fields_maps_keys_drops_blanks_and_writes_the_state_in_full():
     assert to_fields(obj, ABR.mapping) == {"HOUSE": {"142"}, "STREET": {"gandhi road"}, "LOCALITY": {"pollachi"},
                                            "CITY": {"coimbatore"}, "STATE": {"tamil nadu"}, "PIN": {"642001"}}
     assert to_fields(None, ABR.mapping) == {}
+    lists = {"landmark": ["behind SBI atm", "nr hanuman mandir", ""], "pincode": ["490023"], "city": []}
+    assert to_fields(lists, ABR.mapping) == {"LANDMARK": {"behind sbi atm", "nr hanuman mandir"}, "PIN": {"490023"}}
+
+
+def test_the_few_shot_system_uses_our_nine_labels_and_asks_for_verbatim_text():
+    l1 = SYSTEMS["l1-qwen"]
+    assert sorted(l1.mapping.values()) == sorted(LABELS) and not l1.either and len(l1.revision) == 40
+    assert "exactly as written" in l1.prompt and all(key in l1.prompt for key in l1.mapping)
+
+
+def test_answer_is_the_gold_spans_under_the_systems_keys_copied_verbatim():
+    rec = next(r for r in read_jsonl(HAND20) if r["text"].startswith("opp. ganesh temple"))
+    got = json.loads(answer(rec, SYSTEMS["l1-qwen"].mapping))
+    assert list(got) == list(SYSTEMS["l1-qwen"].mapping)  # every key, in the prompt's order
+    assert got["landmark"] == ["opp. ganesh temple"] and got["street"] == ["2nd cross", "hosur road"] and got["state"] == []
 
 
 def test_gold_fields_write_the_state_in_full_too():
@@ -89,3 +104,25 @@ def test_run_scores_fields_and_keeps_the_raw_answers(tiny, tmp_path, monkeypatch
     assert res["field"] == saved["field"]
     raw = [json.loads(line) for line in (tmp_path / "20261111-fake-hand20-s0.pred.jsonl").read_text().splitlines()]
     assert [x["id"] for x in raw] == [r["id"] for r in recs] and raw[-1]["output"] == "not json"
+
+
+def test_run_draws_its_examples_with_the_seed_and_never_from_the_eval_file(tiny, tmp_path, monkeypatch):
+    recs = read_jsonl(HAND20)
+    pool = tmp_path / "pool.jsonl"
+    write_jsonl(pool, [{**r, "id": "pool-" + r["id"]} for r in recs])  # stands in for the real-train pool
+    seen = []
+    monkeypatch.setitem(llm.SYSTEMS, "fake", System(tiny, None, "Parse it.", {"pin": "PIN", "city": "CITY"}))
+    monkeypatch.setattr(llm, "generate",
+                        lambda net, tok, prompt, addresses, shots=(), **k: seen.append(shots) or ["{}"] * len(addresses))
+    kw = dict(results_dir=tmp_path, device="cpu", shots_path=pool, n_shots=3)
+    res = run("fake", HAND20, "20261111-fake-hand20-s7", seed=7, **kw)
+    run("fake", HAND20, "20261111-fake-hand20-s7", seed=7, **kw)
+    run("fake", HAND20, "20261111-fake-hand20-s8", seed=8, **kw)
+    assert len(seen[0]) == 3 and seen[0] == seen[1] != seen[2]  # the seed picks the examples
+    assert all(text in {r["text"] for r in recs} and set(json.loads(shown)) == {"pin", "city"} for text, shown in seen[0])
+    assert res["seed"] == 7 and res["config"]["n_shots"] == 3 and res["config"]["shots"] == str(pool)
+    assert res["config"]["seconds"] >= 0
+    with pytest.raises(ValueError, match="also in the eval file"):
+        run("fake", HAND20, "20261111-fake-hand20-s7", seed=7, results_dir=tmp_path, device="cpu", shots_path=HAND20, n_shots=3)
+    with pytest.raises(ValueError, match="-s7"):
+        run("fake", HAND20, "20261111-fake-hand20-s8", seed=7, **kw)
