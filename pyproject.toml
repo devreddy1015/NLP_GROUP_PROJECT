@@ -16,6 +16,8 @@ train = [
     "datasets>=3.0",
     "sklearn-crfsuite>=0.5",
 ]
+# The web page of app/demo.py only (`uv sync --extra train --extra demo`).
+demo = ["gradio>=5"]
 
 [dependency-groups]
 dev = ["pytest>=8", "pytest-cov>=5"]

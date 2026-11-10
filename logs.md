@@ -14,7 +14,16 @@ Newest entries first. Add one entry per work session, and one row per training o
 
 ---
 
-### 2026-11-11 (03:05–03:20): Claude Code, step 16 (tables) and a PIN fix
+### 2026-11-11 (03:10–03:18): Claude Code, step 15 (demo)
+- **Did (tests first):** `app/demo.py`. `parse(text, tagger, gaz)` returns the whole address as labelled pieces, the normaliser's JSON and plain notes about the PIN (missing, not in the directory, contradicts the written state or district, district and state filled in). Three taggers plug in: rules (starts at once), CRF (trained on `full` at start, about a minute; the default) and a saved transformer folder. The page is Gradio, as the plan says; it stores nothing a visitor types and reports no analytics.
+- **Did:** `src/models/transformer.py --save-dir` keeps the trained model. A test checks that the saved model reproduces exactly the tags the run was scored on.
+- **Checked in the browser:** the page was started with the rules tagger and given the §2 example. It showed `flat 3b` HOUSE, `shanti apts` BUILDING, two landmarks, `supela bhilai` LOCALITY, `490023` PIN, the cleaned JSON, and "District and state filled in from the PIN: Durg, Chhattisgarh." No console errors.
+- **Dependencies:** a new optional extra, `demo = ["gradio>=5"]` (Gradio 6.31.0, Apache-2.0, installed). `uv.lock` updated. `models/` is git-ignored so a saved model (about 1 GB) is never committed.
+- **Tests:** 233 passing, 91 % coverage (`app/` is not in the coverage count).
+- **Problems:** no MuRIL or XLM-R model has been saved yet, so `--model <folder>` is tested only with a tiny random model; the CRF option was tested with a small training file, not started in the browser. The page has no way to choose the model while it runs.
+- **Next:** Step 14 (few-shot LLM).
+
+### 2026-11-11 (03:05–03:10): Claude Code, step 16 (tables) and a PIN fix
 - **Did (tests first):** `scripts/make_tables.py` writes five Markdown tables to `report/tables/` from `results/` alone:
   - `runs.md`: one row per results file.
   - `configs.md`: the seeds of one configuration averaged.

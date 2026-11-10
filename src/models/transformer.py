@@ -101,7 +101,7 @@ def predict(net, tok, records: list[dict], batch_size: int = 64, max_len: int = 
 
 def run(train_path, eval_paths, run_ids, model: str = "muril", seed: int = 42, results_dir="results",
         bootstrap_n: int = 1000, device: str | None = None, epochs: int = EPOCHS, lr: float = LR,
-        batch_size: int = BATCH_SIZE, max_len: int = MAX_LEN) -> list[dict]:
+        batch_size: int = BATCH_SIZE, max_len: int = MAX_LEN, save_dir=None) -> list[dict]:
     # a wrong seed suffix or a repeated id would overwrite another run's results file
     if len(run_ids) != len(eval_paths) or len(set(run_ids)) != len(run_ids) or not all(i.endswith(f"-s{seed}") for i in run_ids):
         raise ValueError(f"need one distinct run id per eval file, each ending in -s{seed}; got {list(run_ids)}")
@@ -114,6 +114,9 @@ def run(train_path, eval_paths, run_ids, model: str = "muril", seed: int = 42, r
     checkpoint = MODELS.get(model, model)
     start = time.perf_counter()
     net, tok, losses = train(tr, checkpoint, seed, epochs, lr, batch_size, max_len, device)
+    if save_dir:  # about 1 GB for MuRIL: only for a model that will be used again, such as the demo's
+        net.save_pretrained(save_dir)
+        tok.save_pretrained(save_dir)
     config = {"train": str(train_path), "n_train": len(tr), "checkpoint": checkpoint,
               "revision": REVISIONS.get(checkpoint), "epochs": epochs, "lr": lr, "batch_size": batch_size,
               "max_len": max_len, "warmup": WARMUP, "weight_decay": WEIGHT_DECAY, "clip": CLIP,
@@ -141,7 +144,8 @@ if __name__ == "__main__":
     p.add_argument("--run-id", required=True, nargs="+", help="one per --eval file, in the same order")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--results-dir", default="results")
+    p.add_argument("--save-dir", default=None, help="keep the trained model here (about 1 GB), e.g. models/muril for the demo")
     a = p.parse_args()
-    for r in run(a.train, a.eval, a.run_id, a.model, a.seed, a.results_dir):
+    for r in run(a.train, a.eval, a.run_id, a.model, a.seed, a.results_dir, save_dir=a.save_dir):
         print(f"{r['run_id']}: n={r['n']} span micro F1={r['span']['micro']['f1']:.3f} macro F1={r['span']['macro']['f1']:.3f} "
               f"exact={r['exact_match']:.3f} CI95={r['ci95'][0]:.3f}-{r['ci95'][1]:.3f} train={r['config']['train_seconds']}s")

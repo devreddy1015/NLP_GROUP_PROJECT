@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 import torch
-from transformers import AutoTokenizer, BertConfig, BertModel, BertTokenizerFast
+from transformers import AutoModelForTokenClassification, AutoTokenizer, BertConfig, BertModel, BertTokenizerFast
 
 from src.data import TAGS, read_jsonl, write_jsonl
 from src.eval import span_scores
@@ -98,7 +98,7 @@ def test_run_trains_once_scores_every_eval_file_and_repeats_with_the_same_seed(t
     monkeypatch.setattr(transformer, "train", lambda *a, **k: calls.append(a) or train(*a, **k))
     ids = ["20261111-tiny-hand20a-s1", "20261111-tiny-hand20b-s1"]
     kw = dict(model=tiny, seed=1, epochs=15, lr=1e-3, batch_size=8, bootstrap_n=10, device="cpu")
-    a, b = run(train_file, [HAND20, HAND20], ids, results_dir=tmp_path / "x", **kw)
+    a, b = run(train_file, [HAND20, HAND20], ids, results_dir=tmp_path / "x", save_dir=tmp_path / "model", **kw)
     assert len(calls) == 1
     saved = json.loads((tmp_path / "x" / f"{ids[0]}.json").read_text())
     assert saved["n"] == 20 and saved["seed"] == 1 and saved["data"] == "fixtures/handlabelled20"
@@ -109,6 +109,8 @@ def test_run_trains_once_scores_every_eval_file_and_repeats_with_the_same_seed(t
     preds = [json.loads(line) for line in (tmp_path / "x" / f"{ids[1]}.pred.jsonl").read_text().splitlines()]
     assert [p["id"] for p in preds] == [r["id"] for r in recs]
     assert all(len(p["tags"]) == len(r["tags"]) for p, r in zip(preds, recs))
+    saved_net = AutoModelForTokenClassification.from_pretrained(tmp_path / "model")
+    assert predict(saved_net, AutoTokenizer.from_pretrained(tmp_path / "model"), recs) == [p["tags"] for p in preds]  # the model that was scored
     run(train_file, [HAND20], ids[:1], results_dir=tmp_path / "y", **kw)
     assert (tmp_path / "y" / f"{ids[0]}.pred.jsonl").read_text() == (tmp_path / "x" / f"{ids[0]}.pred.jsonl").read_text()
 

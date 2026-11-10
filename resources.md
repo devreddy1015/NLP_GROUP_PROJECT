@@ -73,6 +73,7 @@ The master list of external links. Add every new link to its section; if a link 
 | seqeval | https://github.com/chakki-works/seqeval | Span-level F1 | loads |
 | sklearn-crfsuite | https://github.com/TeamHG-Memex/sklearn-crfsuite | CRF baseline | loads |
 | Label Studio | https://labelstud.io | Annotation | loads |
+| Gradio 6.31 | https://github.com/gradio-app/gradio | The demo page (`app/demo.py`); Apache-2.0 (package metadata) | installed and run on 11 Nov 2026 |
 | doccano | https://github.com/doccano/doccano | Annotation (alternative) | loads |
 | Hugging Face token-classification guide | https://huggingface.co/docs/transformers/tasks/token_classification | Fine-tuning recipe | loads |
 
