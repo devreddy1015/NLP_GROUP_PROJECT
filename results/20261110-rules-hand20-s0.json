@@ -7,7 +7,7 @@
   "rules": "v1",
   "data_path": "tests/fixtures/handlabelled20.jsonl"
  },
- "created": "2026-11-10T16:09:01+00:00",
+ "created": "2026-11-10T21:34:40+00:00",
  "n": 20,
  "span": {
   "micro": {
@@ -21,6 +21,10 @@
    "r": 0.8147809978692331,
    "f1": 0.847867559561108,
    "support": 94
+  },
+  "macro_min30": {
+   "f1": null,
+   "labels": []
   },
   "per_label": {
    "BUILDING": {
@@ -147,6 +151,11 @@
   0.7453416149068323,
   0.8972972972972973
  ],
+ "field_ci95": [
+  0.7453416149068323,
+  0.8972972972972973
+ ],
+ "ci_unit": "address",
  "slices": {
   "abbrev": {
    "n": 9,

@@ -14,7 +14,21 @@ Newest entries first. Add one entry per work session, and one row per training o
 
 ---
 
-### 2026-11-11 (02:55–03:25): Claude Code, step 12 (experiment loop and statistics)
+### 2026-11-11 (03:05–03:20): Claude Code, step 16 (tables) and a PIN fix
+- **Did (tests first):** `scripts/make_tables.py` writes five Markdown tables to `report/tables/` from `results/` alone:
+  - `runs.md`: one row per results file.
+  - `configs.md`: the seeds of one configuration averaged.
+  - `shared.md` (E1): each existing system on the labels it shares with us, and our systems rescored on those labels from their saved tags. This closes the second half of C6.
+  - `compare.md` (E2–E4): differences with a paired bootstrap. Every row says "not run yet".
+  - `normaliser.md` (E5).
+- **Did:** rules and CRF re-run under their existing run IDs so that they have per-address tags. Their scores are unchanged; the files gained `field_ci95` and `ci_unit`.
+- **Fixed (tests first; commit `27381c5`):** the India Post file has a `Test Office` row at PIN 999999 and two army base post offices at 9000xx. The normaliser took 999999 as valid and filled in a district from it. `Gazetteer.lookup` now returns nothing for a PIN that does not start with 1 to 8. The gazetteer file and the generator are untouched, because dropping the rows would reshuffle the PIN split. No address in `full` uses those PINs, so no logged number changes.
+- **Tests:** 228 passing, 91 % coverage.
+- **Results (hand20, from `report/tables/shared.md`; a smoke check):** on the eight labels the abr-6024 parser shares with us it scores 0.645 field micro F1. Scored the same way, our CRF gets 0.853, rules 0.828, MuRIL at the fixed settings 0.781 and XLM-R 0.777.
+- **Problems:** no figures (matplotlib is not installed). `shared.md` lists the tuning runs among our systems. The three rows whose PIN starts with 9 are still in the gazetteer and the generator could sample them; drop them the next time the synthetic sets are regenerated.
+- **Next:** Step 15 (demo), step 14 (few-shot LLM).
+
+### 2026-11-11 (02:55–03:05): Claude Code, step 12 (experiment loop and statistics)
 - **Did (tests first), statistics in `src/eval/`:**
   - The bootstrap resamples whole respondents when records carry `meta.respondent` (real data), and single addresses otherwise. A test pins the address-level numbers, so the intervals already logged do not move.
   - `paired_bootstrap` gives the difference between two systems on the same addresses with a 95 % interval, for span F1 or field F1.

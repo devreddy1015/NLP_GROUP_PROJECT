@@ -12,7 +12,7 @@
   "max_iter": 100,
   "features": "v1"
  },
- "created": "2026-11-10T16:10:46+00:00",
+ "created": "2026-11-10T21:36:20+00:00",
  "n": 2000,
  "span": {
   "micro": {
@@ -26,6 +26,20 @@
    "r": 0.9919010211264891,
    "f1": 0.9916507382345016,
    "support": 15088
+  },
+  "macro_min30": {
+   "f1": 0.9916507382345016,
+   "labels": [
+    "BUILDING",
+    "CITY",
+    "DISTRICT",
+    "HOUSE",
+    "LANDMARK",
+    "LOCALITY",
+    "PIN",
+    "STATE",
+    "STREET"
+   ]
   },
   "per_label": {
    "BUILDING": {
@@ -152,6 +166,11 @@
   0.9904440697020799,
   0.9933304575770647
  ],
+ "field_ci95": [
+  0.9907026165493426,
+  0.9935140528854149
+ ],
+ "ci_unit": "address",
  "slices": {},
  "label_support": {
   "HOUSE": 1577,
