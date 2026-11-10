@@ -5,7 +5,8 @@
 #   scripts/run_experiments.sh e2 e3              # some experiments: e2 | e3 | e4 | xlmr | all (default)
 #   scripts/run_experiments.sh --final all        # also score the real TEST set: final runs only (CLAUDE.md rule 2)
 #
-# Each run takes about 8 minutes on the RTX 4060, so all 48 take a little over 6 hours: ask the team first (rule 7).
+# Each run takes 5 to 6 minutes on the RTX 4060 (an estimate: 314 s of training plus loading and scoring), so all 48
+# take four to five hours: ask the team first (rule 7).
 # A run whose last results file exists is skipped, so the script can be stopped and started again on the same day;
 # on a later day pass the first day's date: DATE=20261120 scripts/run_experiments.sh e3
 # A --final run trains again (models are not kept) and so writes new dev results beside the test results. The tables

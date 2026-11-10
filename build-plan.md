@@ -120,6 +120,8 @@ About 48 MuRIL runs: E2 (2 configs) + E3 (8) + E4 (4 values of k, plus the 40k r
 
 **Measured again at the fixed settings (11 Nov, 3 epochs, learning rate 1e-4, mixed precision):** `20261111-muril-tune-e3lr1e4-synfull-dev-s42` took 314 s to train and about 8 minutes end to end. 48 runs need a little over 6 hours, inside the estimate, so E3 can stay on MuRIL. About a third of each run is scoring (the 1,000-sample bootstrap on 2,000 synthetic addresses). XLM-R at the same settings (`20261111-xlmr-synfull-dev-s42`) took 361 s to train and 8.5 minutes end to end; the card peaked at 7,194 MiB of 8,188, so XLM-R runs need the GPU to themselves.
 
+**Scoring made faster (11 Nov, 04:00):** about a third of each run used to be the bootstrap (126 s for one interval on 2,000 addresses). It now takes 0.6 s and gives the same intervals to the bit. A run should therefore take about 5 and a half minutes and the 48 runs about four and a half hours; this is an estimate until the first run of the loop is timed.
+
 ## 4. Edits the other docs need once the team agrees
 - `initials.md`: deadline; §4 (place name, landmark rules, HOUSE examples); §5.2 (clean config, one family per transformation, test split); §5.3 (form fields, split by respondent); §7 (40k run, mixing rule); §8 (field-level metric, drop PIN–city); §12 and §13 for every decision above.
 - `research.md` §2: add DISTRICT to the mukuls9971 row and mapping column; add gagan1985 and howdoiuse-keyboard to the mapping table; close §10 question 3.

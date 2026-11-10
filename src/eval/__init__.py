@@ -8,8 +8,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Sequence
 
+import numpy as np
 from seqeval.metrics import classification_report, f1_score
-from seqeval.scheme import IOB2
+from seqeval.scheme import IOB2, Entities
 
 from src.data import LABELS, normalise_value, tags_to_spans, tokenize
 
@@ -61,9 +62,16 @@ def _prf(tp: int, fp: int, fn: int) -> dict:
 
 
 def span_scorer(gold: Tags, pred: Tags):
-    """A function from address indices to micro span F1 on those addresses, for the bootstraps below."""
-    gold, pred = list(map(list, gold)), list(map(list, pred))
-    return lambda idx: float(f1_score([gold[i] for i in idx], [pred[i] for i in idx], average="micro", **_STRICT))
+    """A function from address indices to micro span F1 on those addresses, for the bootstraps below.
+
+    seqeval's strict IOB2 reader extracts the spans once. Per address we keep how many are right, wrong and missed,
+    and a resample only adds those up. The result is what seqeval's f1_score gives on the resampled lists, to the bit,
+    without rescoring them a thousand times.
+    """
+    def spans(tags: Tags) -> list[set]:
+        return [{(e.start, e.end, e.tag) for e in address} for address in Entities(list(map(list, tags)), IOB2).entities]
+    counts = np.array([(len(g & p), len(p - g), len(g - p)) for g, p in zip(spans(gold), spans(pred))]).reshape(-1, 3)
+    return lambda idx: _prf(*(int(c) for c in counts[idx].sum(axis=0)))["f1"]
 
 
 def field_scorer(gold: Sequence[dict], pred: Sequence[dict], fields: Iterable[str] = LABELS):

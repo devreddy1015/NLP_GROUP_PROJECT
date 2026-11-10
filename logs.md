@@ -14,6 +14,13 @@ Newest entries first. Add one entry per work session, and one row per training o
 
 ---
 
+### 2026-11-11 (03:56–04:00): Claude Code, faster bootstrap
+- **Did (tests first):** `src/eval.span_scorer` no longer asks seqeval to rescore every resample. seqeval's strict IOB2 reader extracts the spans once, three counts are kept per address (right, wrong, missed), and a resample adds them up.
+- **Checked:** a test compares the scorer with seqeval's `f1_score` on 64 resamples of tags with a third replaced at random (wrong labels, dangling `I-` tags, spans cut in two): equal to the bit. The interval of every stored span run that has saved tags (21 files) was recomputed and is identical to the one in its results file.
+- **Timing (measured, 2,000 synthetic dev addresses, 1,000 resamples):** one interval took 126.2 s before and 0.6 s after. The whole `evaluate()` call now takes 1.3 s.
+- **Effect on the budget (an estimate, not timed end to end):** a training run should drop from about 8 minutes to about 5 and a half (314 s of training plus loading and prediction), so the 48 runs to about four and a half hours. `compare.md` no longer takes a minute per pair.
+- **Tests:** 245 passing, 91 % coverage.
+
 ### 2026-11-11 (03:30–03:55): Claude Code, review of steps 12, 14, 15 and 16, and its fixes
 - **Review (mle-reviewer):** the statistics are right (respondent resampling, percentile indices; the address-level intervals already logged are unchanged), the loop never scores the real test set without `--final`, and E4's subsets are nested. It found the problems below. Each is fixed with a test.
 - **Fixed in the tables (`scripts/make_tables.py`):**
@@ -30,7 +37,7 @@ Newest entries first. Add one entry per work session, and one row per training o
 - **Results (hand20, `report/tables/shared.md`; these replace the same-label numbers quoted in the two entries below):** against the abr-6024 parser's 0.645 on its eight labels: CRF 0.848, rules 0.821, XLM-R 0.778, MuRIL (first-guess run) 0.777. Against the few-shot LLM's 0.484 on nine labels: CRF 0.842, rules 0.828, XLM-R 0.772, MuRIL 0.754. Every interval excludes zero. **This is not a finding:** the 20 addresses were written by us in our own conventions and were used to fix the generator, so they favour our systems.
 - **Not fixed (known limits):**
   - The paired interval covers the choice of test addresses, not the training seed, and unequal numbers of seeds are not corrected.
-  - The bootstrap calls seqeval once per resample. That is most of the 2.5 minutes of scoring after each training run, and about a minute per pair in `compare.md` on 260 addresses with three seeds a side (reviewer's timing).
+  - The bootstrap calls seqeval once per resample. That is most of the 2.5 minutes of scoring after each training run, and about a minute per pair in `compare.md` on 260 addresses with three seeds a side (reviewer's timing). *Fixed in the 03:56–04:00 entry.*
   - The dry run prints the `generate full` command more than once on a fresh checkout. `app/demo.py` got only a light read.
 
 ### 2026-11-11 (03:18–03:25): Claude Code, step 14 (few-shot LLM)

@@ -111,6 +111,26 @@ def test_bootstrap_on_single_addresses_gives_the_numbers_already_logged():
     assert bootstrap_ci(gold, pred, n=200, seed=3) == pytest.approx((0.7848101265822784, 0.8727272727272727))
 
 
+def test_span_scorer_gives_exactly_what_seqeval_gives():
+    """The bootstraps count spans once per address instead of calling seqeval per resample; the two must agree to the bit."""
+    import random
+
+    from seqeval.metrics import f1_score
+    from seqeval.scheme import IOB2
+
+    from src.data import TAGS
+    rng = random.Random(7)
+    recs = read_jsonl("tests/fixtures/handlabelled20.jsonl")
+    gold = [r["tags"] for r in recs] + [["O", "O"]]
+    # a third of the tags replaced at random: wrong labels, dangling I- tags, spans cut in two
+    pred = [[t if rng.random() > 0.33 else rng.choice(TAGS) for t in tags] for tags in gold]
+    score = span_scorer(gold, pred)
+    samples = [[rng.randrange(len(gold)) for _ in gold] for _ in range(60)] + [list(range(len(gold))), [20], [20, 20], [3] * 9]
+    for idx in samples:
+        want = f1_score([gold[i] for i in idx], [pred[i] for i in idx], average="micro", mode="strict", scheme=IOB2, zero_division=0)
+        assert score(idx) == want, idx
+
+
 def test_interval_resamples_whole_groups():
     seen = []
     interval(lambda idx: seen.append(idx) or 0.0, 4, n=30, seed=1, groups=["r1", "r1", "r2", "r2"])

@@ -84,7 +84,7 @@ uv run python -m src.models.crf --train data/synthetic/full/train.jsonl --eval <
 uv run python -m src.models.transformer --model muril --train data/synthetic/full/train.jsonl --seed 42 --eval <jsonl> [<jsonl> ...] --run-id YYYYMMDD-muril-synfull-<data>-s42 [...]   # one run id per eval file, each ending in -s<seed>; --model muril | xlmr
 uv run python -m src.models.zeroshot --system mukuls-muril --data <jsonl> --run-id YYYYMMDD-mukuls-muril-<data>-s0   # existing taggers, no training: shiprocket-indicbert | shiprocket-tinybert | mukuls-muril | gagan-tinybert
 uv run python -m src.models.llm --system abr-parser --data <jsonl> --run-id YYYYMMDD-abr-parser-<data>-s0         # JSON-output systems, field-level score only; few-shot LLM: --system l1-qwen --shots data/real/train.jsonl --n-shots 5 --seed 42 (run id ends in -s42)
-scripts/run_experiments.sh --dry-run      # list the 48 runs of E2, E3, E4 and XLM-R; drop --dry-run to run (6+ hours, needs data/real/dev.jsonl; add --final to score the real test set)
+scripts/run_experiments.sh --dry-run      # list the 48 runs of E2, E3, E4 and XLM-R; drop --dry-run to run (four to five hours, needs data/real/dev.jsonl; add --final to score the real test set)
 uv run python -m app.demo [--model rules | crf | models/<folder>]   # demo page on http://127.0.0.1:7860 (needs `uv sync --extra train --extra demo`); add --save-dir models/<folder> to a transformer run to keep its model
 uv run python -m scripts.make_tables      # report/tables/*.md from results/ alone: runs, configs, shared (E1), compare (E2–E4), normaliser (E5)
 uv run python -m src.mix --synthetic data/synthetic/full/train.jsonl --real data/real/train.jsonl --k 50 --seed 42 --out <jsonl>   # E4 training file
