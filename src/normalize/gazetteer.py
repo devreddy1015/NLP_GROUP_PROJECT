@@ -136,7 +136,8 @@ class Gazetteer:
 
     def lookup(self, pin: str) -> dict | None:
         g = self._by_pin.get(pin)
-        if g is None:
+        # civil PINs start with 1 to 8; the directory also holds a "Test Office" at 999999 and two army base post offices
+        if g is None or pin[0] not in "12345678":
             return None
         # one PIN in 17 covers offices in more than one district: `district` is the commonest, `districts` is all of them
         return {"pin": pin, "offices": g.office.tolist(), "city": g.city.mode()[0], "district": g.district.mode()[0],

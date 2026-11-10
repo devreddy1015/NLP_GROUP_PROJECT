@@ -114,3 +114,10 @@ def test_full_gazetteer_lookup():
     hit = Gazetteer.load().lookup("490023")
     assert hit["district"] == "Durg" and hit["state"] == "Chhattisgarh" and "Supela Bhilai" in hit["offices"]
     assert hit["city"] == "Bhilai"  # read off the office names, not the "Durg" postal division
+
+
+@pytest.mark.skipif(not Path("data/gazetteer/pincodes.csv").exists(), reason="full gazetteer not built")
+@pytest.mark.parametrize("pin", ["999999", "900056", "900099"])  # a "Test Office" row and two army base post offices
+def test_a_pin_must_start_with_1_to_8(pin):
+    gaz = Gazetteer.load()
+    assert pin in set(gaz.df.pin) and gaz.lookup(pin) is None
