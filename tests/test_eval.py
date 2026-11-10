@@ -2,10 +2,10 @@ import json
 
 import pytest
 
-from src.data import label_substrings, make_record
+from src.data import label_substrings, make_record, read_jsonl
 from src.eval import (
-    bootstrap_ci, evaluate, exact_match, field_scores, fields_from, normalise_value,
-    slice_scores, span_scores, write_results,
+    bootstrap_ci, evaluate, exact_match, field_scorer, field_scores, fields_from, interval, normalise_value,
+    paired_bootstrap, read_predictions, slice_scores, span_scorer, span_scores, write_predictions, write_results,
 )
 from tests.test_data import ROUND_TRIP
 
@@ -101,3 +101,58 @@ def test_evaluate_writes_results_file(records, tmp_path):
 def test_evaluate_rejects_length_mismatch(records):
     with pytest.raises(ValueError):
         evaluate(records, [["O"]], run_id="x", model="m", data="d", seed=0)
+
+
+def test_bootstrap_on_single_addresses_gives_the_numbers_already_logged():
+    """Every interval in results/ so far came from this resampling; a refactor must not move them."""
+    recs = read_jsonl("tests/fixtures/handlabelled20.jsonl")
+    gold = [r["tags"] for r in recs]
+    pred = [[t if "PIN" not in t and "STREET" not in t else "O" for t in r["tags"]] for r in recs]
+    assert bootstrap_ci(gold, pred, n=200, seed=3) == pytest.approx((0.7848101265822784, 0.8727272727272727))
+
+
+def test_interval_resamples_whole_groups():
+    seen = []
+    interval(lambda idx: seen.append(idx) or 0.0, 4, n=30, seed=1, groups=["r1", "r1", "r2", "r2"])
+    assert len(seen) == 30 and all(len(idx) == 4 for idx in seen)
+    assert all(idx.count(0) == idx.count(1) and idx.count(2) == idx.count(3) for idx in seen)  # a respondent stays whole
+    assert {tuple(sorted(set(idx))) for idx in seen} == {(0, 1), (2, 3), (0, 1, 2, 3)}
+
+
+def test_paired_bootstrap_sees_a_real_difference_and_no_fake_one():
+    gold = [["B-CITY", "O", "B-PIN"]] * 40
+    worse = [["B-CITY", "O", "O"]] * 20 + [["O", "O", "O"]] * 20
+    found = paired_bootstrap(span_scorer(gold, gold), span_scorer(gold, worse), 40, n=200, seed=0)
+    assert found["diff"] > 0.5 and found["ci95"][0] > 0
+    same = paired_bootstrap(span_scorer(gold, worse), span_scorer(gold, worse), 40, n=200, seed=0)
+    assert same == {"diff": 0.0, "ci95": [0.0, 0.0]}
+
+
+def test_field_scorer_agrees_with_field_scores():
+    gold = [{"CITY": {"pune"}, "PIN": {"411001"}}, {"CITY": {"durg"}}]
+    pred = [{"CITY": {"pune"}, "PIN": {"411002"}}, {}]
+    score = field_scorer(gold, pred, ("CITY", "PIN"))
+    assert score([0, 1]) == pytest.approx(field_scores(gold, pred, ("CITY", "PIN"))["micro"]["f1"])
+    assert score([0, 0]) == pytest.approx(0.5) and score([1, 1]) == 0.0
+
+
+def test_macro_over_labels_with_enough_spans():
+    tags = [["B-CITY"]] * 30 + [["B-PIN"]]
+    assert span_scores(tags, tags)["macro_min30"] == {"f1": 1.0, "labels": ["CITY"]}
+    assert span_scores(tags[:5], tags[:5])["macro_min30"] == {"f1": None, "labels": []}
+
+
+def test_evaluate_resamples_respondents_when_records_carry_them(records):
+    pred = [r["tags"] for r in records]
+    grouped = [{**r, "meta": {**r["meta"], "respondent": f"R{i // 2}"}} for i, r in enumerate(records)]
+    res = evaluate(grouped, pred, run_id="x", model="m", data="d", seed=0, bootstrap_n=20)
+    assert res["ci_unit"] == "respondent" and res["field_ci95"] == [1.0, 1.0]
+    assert evaluate(records, pred, run_id="x", model="m", data="d", seed=0, bootstrap_n=20)["ci_unit"] == "address"
+
+
+def test_predictions_round_trip(records, tmp_path):
+    pred = [r["tags"] for r in records]
+    write_predictions(records, pred, "20261111-x-s0", tmp_path)
+    assert read_predictions(tmp_path / "20261111-x-s0.pred.jsonl", records) == pred
+    with pytest.raises(ValueError, match="different addresses"):
+        read_predictions(tmp_path / "20261111-x-s0.pred.jsonl", records[:-1])

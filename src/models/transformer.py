@@ -8,7 +8,6 @@ Run: uv run python -m src.models.transformer --model muril --train data/syntheti
          --run-id YYYYMMDD-muril-synfull-dev-s42 YYYYMMDD-muril-synfull-realdev-s42
 """
 import argparse
-import json
 import time
 from pathlib import Path
 
@@ -18,7 +17,7 @@ from torch.utils.data import DataLoader
 from transformers import AutoModelForTokenClassification, AutoTokenizer, DataCollatorForTokenClassification
 
 from src.data import TAGS, read_jsonl
-from src.eval import evaluate, write_results
+from src.eval import evaluate, write_predictions, write_results
 
 MODELS = {"muril": "google/muril-base-cased", "xlmr": "FacebookAI/xlm-roberta-base"}
 # hub commits, pinned so a run can be repeated (checked 11 Nov 2026); any other name or a local folder loads as it is
@@ -109,6 +108,9 @@ def run(train_path, eval_paths, run_ids, model: str = "muril", seed: int = 42, r
     tr, evals = read_jsonl(train_path), [read_jsonl(p) for p in eval_paths]  # before training: a mistyped path must not cost a GPU run
     if not tr or not all(evals):
         raise ValueError("the train file or an eval file is empty")
+    train_ids = {r["id"] for r in tr}
+    if any(r["id"] in train_ids for ev in evals for r in ev):  # the frozen test set must never be trained on (CLAUDE.md rule 2)
+        raise ValueError("a training address is also in an eval file")
     checkpoint = MODELS.get(model, model)
     start = time.perf_counter()
     net, tok, losses = train(tr, checkpoint, seed, epochs, lr, batch_size, max_len, device)
@@ -126,9 +128,7 @@ def run(train_path, eval_paths, run_ids, model: str = "muril", seed: int = 42, r
         res = evaluate(ev, pred, run_id=run_id, model=Path(model).name, data=data, seed=seed, bootstrap_n=bootstrap_n,
                        config=config)
         write_results(res, results_dir)
-        # kept per address: the paired bootstrap (initials.md §8) needs both systems' tags, and this model cannot be rebuilt exactly
-        (Path(results_dir) / f"{run_id}.pred.jsonl").write_text(
-            "".join(json.dumps({"id": r["id"], "tags": p}) + "\n" for r, p in zip(ev, pred)), encoding="utf-8")
+        write_predictions(ev, pred, run_id, results_dir)  # this model cannot be rebuilt exactly, so its tags are kept
         results.append(res)
     return results
 

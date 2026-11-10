@@ -67,3 +67,4 @@ def test_run_writes_results_file(gaz, tmp_path):
     assert saved["n"] == 20 and saved["model"] == "rules" and saved["data"] == "handlabelled20"
     assert 0 < saved["span"]["micro"]["f1"] < 1 and saved["span"]["per_label"]["PIN"]["f1"] > 0.5
     assert res["run_id"] == saved["run_id"]
+    assert len((tmp_path / "20261110-rules-hand20-s0.pred.jsonl").read_text().splitlines()) == 20  # tags kept per address

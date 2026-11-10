@@ -14,6 +14,20 @@ Newest entries first. Add one entry per work session, and one row per training o
 
 ---
 
+### 2026-11-11 (02:55–03:25): Claude Code, step 12 (experiment loop and statistics)
+- **Did (tests first), statistics in `src/eval/`:**
+  - The bootstrap resamples whole respondents when records carry `meta.respondent` (real data), and single addresses otherwise. A test pins the address-level numbers, so the intervals already logged do not move.
+  - `paired_bootstrap` gives the difference between two systems on the same addresses with a 95 % interval, for span F1 or field F1.
+  - Every results file gains `field_ci95`, `ci_unit` and `span.macro_min30` (macro F1 over the labels with at least 30 gold spans).
+- **Did:** every model script now saves its tags per address (`<run-id>.pred.jsonl`) through one helper, rules and CRF included, so any two systems can be compared and any system rescored on fewer labels. The trainer refuses to train on an address that is also in an eval file (rule 2).
+- **Did:** `src/mix.py` (E4). It takes the first k addresses of the real-train pool after a seeded shuffle, so the subsets are nested within a seed, and repeats them to about a tenth of the training file.
+- **Did:** `scripts/run_experiments.sh`. Loops for E2 (6 runs), E3 (24), E4 (12, plus 3 on 40k synthetic) and XLM-R (3): 48 in all. `--dry-run` lists them. The real test set is scored only with `--final`. It refuses to start without `data/real/dev.jsonl`, and it skips a run that is already finished.
+- **Not run:** none of the 48. They need the real dev and test sets, and at about 8 minutes each they take a little over 6 hours.
+- **Tests:** 218 passing, 91 % coverage.
+- **Decided (provisional; row in `initials.md` §13):** the mixing rule as proposed; k = 0 is E2's full-noise run; the three seeds are training seeds over one synthetic set (data seed 42); run IDs `<date>-<model>-<train tag>-<syntest|realdev|realtest>-s<seed>`.
+- **Problems:** the paired test and the rescoring on fewer labels exist as functions, but nothing calls them yet (step 16 will). Results files written before today have no `field_ci95` or `macro_min30`.
+- **Next:** Step 16 (tables from `results/`), step 15 (demo), step 14 (few-shot LLM).
+
 ### 2026-11-11 (02:05–02:55): Claude Code, step 11 (existing parsers, no training) and the JSON path
 - **Did (tests first):** `src/models/zeroshot.py` (Z, E1). It runs four open address taggers at pinned commits on the raw address text, as their model cards do, and reads each token's label by character offset. Their labels are mapped onto ours with the tables in `research.md` §2. A system is scored only on the labels it shares with us (gold spans of any other label are blanked). Stray commas and brackets at span ends are dropped by the rule human annotations get (`annotate.snap_span`). Each model's own tags are saved beside ours in `<run-id>.pred.jsonl`.
 - **Did (tests first):** `src/models/llm.py`, the path for systems that answer in JSON. It runs the generative parser `abr-6024/indian-address-parser-1.5B` with the prompt from its model card, maps its keys onto our labels and scores at field level only. State names are written in full on both sides. Its `city` counts as right if it is our city or our district. The few-shot LLM (step 14) will reuse this path.

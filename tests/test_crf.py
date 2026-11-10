@@ -54,6 +54,7 @@ def test_run_writes_results_and_subsamples(gaz, synthetic, tmp_path):
               results_dir=tmp_path, gaz=gaz, max_iter=30, bootstrap_n=10)
     saved = json.loads((tmp_path / "20261110-crf-test-s1.json").read_text())
     assert saved["model"] == "crf" and saved["n"] == 20 and saved["config"]["n_train"] == 100 and saved["seed"] == 1
+    assert len((tmp_path / "20261110-crf-test-s1.pred.jsonl").read_text().splitlines()) == 20  # tags kept per address
     big = run(synthetic / "train.jsonl", HAND20, run_id="20261110-crf-test-s2", n_train=10**6,
               results_dir=tmp_path, gaz=gaz, max_iter=5, bootstrap_n=10)
     assert big["config"]["n_train"] == big["config"]["n_train_total"]  # asking for more than there is uses the whole set

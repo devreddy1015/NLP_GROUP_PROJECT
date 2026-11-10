@@ -8,7 +8,7 @@ from pathlib import Path
 
 from src.data import Span, Token, read_jsonl, spans_to_tags, tokenize
 from src.data import normalise_value
-from src.eval import evaluate, write_results
+from src.eval import evaluate, write_predictions, write_results
 from src.normalize.gazetteer import Gazetteer, canonical_state
 
 RELATION = {"near", "nr", "opp", "opposite", "behind", "beside", "bh", "adjacent", "backside", "infront", "next", "above", "below"}
@@ -135,6 +135,7 @@ def run(data_path: str | Path, run_id: str, results_dir: str | Path = "results",
     res = evaluate(records, pred, run_id=run_id, model="rules", data=Path(data_path).stem, seed=0,
                    config={"rules": "v1", "data_path": str(data_path)}, bootstrap_n=bootstrap_n)
     write_results(res, results_dir)
+    write_predictions(records, pred, run_id, results_dir)
     return res
 
 

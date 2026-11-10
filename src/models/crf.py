@@ -11,7 +11,7 @@ from pathlib import Path
 import sklearn_crfsuite
 
 from src.data import read_jsonl
-from src.eval import evaluate, write_results
+from src.eval import evaluate, write_predictions, write_results
 from src.models.rules import BUILDING_CUES, DISTRICT_CUES, HOUSE_CUES, LOCALITY_CUES, POSTPOSITIONS, RELATION, STREET_CUES
 from src.normalize.gazetteer import Gazetteer, canonical_state
 
@@ -88,6 +88,7 @@ def run(train_path, eval_path, run_id: str, seed: int = 0, n_train: int | None =
                    config={"train": str(train_path), "n_train": len(tr), "n_train_total": n_total, "c1": c1, "c2": c2,
                            "max_iter": max_iter, "features": "v1"})
     write_results(res, results_dir)
+    write_predictions(ev, pred, run_id, results_dir)
     return res
 
 

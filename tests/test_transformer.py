@@ -6,7 +6,7 @@ import pytest
 import torch
 from transformers import AutoTokenizer, BertConfig, BertModel, BertTokenizerFast
 
-from src.data import TAGS, read_jsonl
+from src.data import TAGS, read_jsonl, write_jsonl
 from src.eval import span_scores
 from src.models import transformer
 from src.models.transformer import encode, predict, run, train
@@ -37,6 +37,14 @@ def tiny(tmp_path_factory):
     BertModel(BertConfig(vocab_size=len(vocab), hidden_size=64, num_hidden_layers=2, num_attention_heads=2,
                          intermediate_size=128)).save_pretrained(d)
     return str(d)
+
+
+@pytest.fixture(scope="module")
+def train_file(tmp_path_factory):
+    """The hand-labelled addresses under other ids: run() refuses to train on an address that is also in an eval file."""
+    path = tmp_path_factory.mktemp("train") / "train.jsonl"
+    write_jsonl(path, [{**r, "id": "t-" + r["id"]} for r in read_jsonl(HAND20)])
+    return path
 
 
 @pytest.fixture(scope="module")
@@ -85,12 +93,12 @@ def test_training_on_the_gpu_with_mixed_precision_still_learns(tiny):
     assert span_scores([r["tags"] for r in recs], predict(model, tok, recs))["micro"]["f1"] > 0.9
 
 
-def test_run_trains_once_scores_every_eval_file_and_repeats_with_the_same_seed(tiny, tmp_path, monkeypatch):
+def test_run_trains_once_scores_every_eval_file_and_repeats_with_the_same_seed(tiny, train_file, tmp_path, monkeypatch):
     calls = []
     monkeypatch.setattr(transformer, "train", lambda *a, **k: calls.append(a) or train(*a, **k))
     ids = ["20261111-tiny-hand20a-s1", "20261111-tiny-hand20b-s1"]
     kw = dict(model=tiny, seed=1, epochs=15, lr=1e-3, batch_size=8, bootstrap_n=10, device="cpu")
-    a, b = run(HAND20, [HAND20, HAND20], ids, results_dir=tmp_path / "x", **kw)
+    a, b = run(train_file, [HAND20, HAND20], ids, results_dir=tmp_path / "x", **kw)
     assert len(calls) == 1
     saved = json.loads((tmp_path / "x" / f"{ids[0]}.json").read_text())
     assert saved["n"] == 20 and saved["seed"] == 1 and saved["data"] == "fixtures/handlabelled20"
@@ -101,7 +109,7 @@ def test_run_trains_once_scores_every_eval_file_and_repeats_with_the_same_seed(t
     preds = [json.loads(line) for line in (tmp_path / "x" / f"{ids[1]}.pred.jsonl").read_text().splitlines()]
     assert [p["id"] for p in preds] == [r["id"] for r in recs]
     assert all(len(p["tags"]) == len(r["tags"]) for p, r in zip(preds, recs))
-    run(HAND20, [HAND20], ids[:1], results_dir=tmp_path / "y", **kw)
+    run(train_file, [HAND20], ids[:1], results_dir=tmp_path / "y", **kw)
     assert (tmp_path / "y" / f"{ids[0]}.pred.jsonl").read_text() == (tmp_path / "x" / f"{ids[0]}.pred.jsonl").read_text()
 
 
@@ -117,3 +125,8 @@ def test_run_reads_every_eval_file_before_training(tiny, tmp_path, no_training):
         run(HAND20, [HAND20, tmp_path / "missing.jsonl"], ["a-s42", "b-s42"], model=tiny, results_dir=tmp_path)
     with pytest.raises(ValueError, match="empty"):
         run(HAND20, [tmp_path / "empty.jsonl"], ["a-s42"], model=tiny, results_dir=tmp_path)
+
+
+def test_run_refuses_to_train_on_an_address_it_is_scored_on(tiny, tmp_path, no_training):
+    with pytest.raises(ValueError, match="also in an eval file"):
+        run(HAND20, [HAND20], ["a-s42"], model=tiny, results_dir=tmp_path)
