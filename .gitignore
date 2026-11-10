@@ -8,6 +8,7 @@ __pycache__/
 .coverage
 htmlcov/
 
-# Claude Code local state (CLAUDE.md itself is the shared project rules and stays tracked)
+# Claude Code files: local state, and the project rules file (kept on disk, not in git)
 .claude/
+CLAUDE.md
 CLAUDE.local.md
