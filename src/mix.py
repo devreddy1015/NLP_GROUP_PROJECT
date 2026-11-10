@@ -10,7 +10,7 @@ Run: uv run python -m src.mix --synthetic data/synthetic/full/train.jsonl --real
 import argparse
 import random
 
-from src.data import read_jsonl, write_jsonl
+from src.data import read_jsonl, require_train, write_jsonl
 
 SHARE = 0.10  # the part of the mixed file that is real, whatever k is
 
@@ -20,6 +20,7 @@ def mix(synthetic: list[dict], real: list[dict], k: int, seed: int, share: float
         raise ValueError(f"k = {k}, but the real pool holds {len(real)} addresses")
     if k == 0:
         return list(synthetic)
+    require_train(real, "the real pool")
     chosen = random.Random(seed).sample(real, len(real))[:k]  # a full shuffle first, so a smaller k is a prefix of a larger one
     copies = max(1, round(share * len(synthetic) / ((1 - share) * k)))
     return list(synthetic) + chosen * copies

@@ -1,3 +1,4 @@
+import os
 import subprocess
 from pathlib import Path
 
@@ -6,8 +7,9 @@ import pytest
 SCRIPT = "scripts/run_experiments.sh"
 
 
-def planned(*args):
-    out = subprocess.run(["bash", SCRIPT, "--dry-run", *args], capture_output=True, text=True, check=True).stdout
+def planned(*args, **env):
+    out = subprocess.run(["bash", SCRIPT, "--dry-run", *args], capture_output=True, text=True, check=True,
+                         env={**os.environ, **env}).stdout
     return [line for line in out.splitlines() if "src.models.transformer" in line]
 
 
@@ -25,8 +27,17 @@ def test_the_real_test_set_is_scored_only_in_final_runs():
     assert len(final) == 6 and all("data/real/test.jsonl" in r and "realtest" in r for r in final)
 
 
-def test_one_experiment_can_be_run_alone():
+def test_experiments_can_be_run_alone_or_several_at_once():
     assert len(planned("e3")) == 24 and len(planned("e4")) == 15 and len(planned("xlmr")) == 3
+    assert len(planned("e2", "e3")) == 30 and len(planned("all")) == 48
+
+
+def test_a_finished_run_is_skipped(tmp_path):
+    (tmp_path / "20261120-muril-synclean-realdev-s42.json").write_text("{}")
+    runs = planned("e2", DATE="20261120", RESULTS=str(tmp_path))
+    assert len(runs) == 5 and not any("synclean-realdev-s42" in r for r in runs)
+    assert all(f"--results-dir {tmp_path}" in r for r in runs)
+    assert len(planned("e2", "--final", DATE="20261120", RESULTS=str(tmp_path))) == 6  # a final run trains again
 
 
 @pytest.mark.skipif(Path("data/real/dev.jsonl").exists(), reason="real dev data is present")

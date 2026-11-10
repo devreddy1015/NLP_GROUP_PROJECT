@@ -132,7 +132,8 @@ def run(data_path: str | Path, run_id: str, results_dir: str | Path = "results",
     gaz = gaz or Gazetteer.load()
     records = read_jsonl(data_path)
     pred = [predict(r["text"], gaz) for r in records]
-    res = evaluate(records, pred, run_id=run_id, model="rules", data=Path(data_path).stem, seed=0,
+    data = f"{Path(data_path).parent.name}/{Path(data_path).stem}"  # the same naming as every other model script
+    res = evaluate(records, pred, run_id=run_id, model="rules", data=data, seed=0,
                    config={"rules": "v1", "data_path": str(data_path)}, bootstrap_n=bootstrap_n)
     write_results(res, results_dir)
     write_predictions(records, pred, run_id, results_dir)

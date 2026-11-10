@@ -1,13 +1,13 @@
 {
  "run_id": "20261110-rules-hand20-s0",
  "model": "rules",
- "data": "handlabelled20",
+ "data": "fixtures/handlabelled20",
  "seed": 0,
  "config": {
   "rules": "v1",
   "data_path": "tests/fixtures/handlabelled20.jsonl"
  },
- "created": "2026-11-10T21:34:40+00:00",
+ "created": "2026-11-10T22:14:16+00:00",
  "n": 20,
  "span": {
   "micro": {

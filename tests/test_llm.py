@@ -69,12 +69,15 @@ def test_gold_fields_write_the_state_in_full_too():
 
 
 def test_fold_counts_their_city_as_right_if_it_is_our_city_or_our_district():
-    gold = {"CITY": {"bhilai"}, "DISTRICT": {"durg"}, "PIN": {"490020"}}
-    assert fold(gold, {"CITY": {"durg"}}, ("CITY", "DISTRICT")) == {"CITY": {"durg"}, "PIN": {"490020"}}
-    missed = fold(gold, {"CITY": {"raipur"}}, ("CITY", "DISTRICT"))
-    assert len(missed["CITY"]) == 1 and "DISTRICT" not in missed  # one miss, not two
-    assert fold({"PIN": {"490020"}}, {"CITY": {"durg"}}, ("CITY", "DISTRICT")) == {"PIN": {"490020"}}
-    assert fold(gold, {}, ()) == gold
+    gold, either = {"CITY": {"bhilai"}, "DISTRICT": {"durg"}, "PIN": {"490020"}}, ("CITY", "DISTRICT")
+    assert fold(gold, {"CITY": {"durg"}}, either) == ({"CITY": {"durg"}, "PIN": {"490020"}}, {"CITY": {"durg"}})
+    missed, wrong = fold(gold, {"CITY": {"raipur"}}, either)
+    assert len(missed["CITY"]) == 1 and "DISTRICT" not in missed and wrong == {"CITY": {"raipur"}}  # one miss, not two
+    # a tagger that names both the city and the district gets one hit, the same as a system with a single key
+    both = fold(gold, {"CITY": {"bhilai"}, "DISTRICT": {"durg"}, "PIN": {"490020"}}, either)
+    assert both == ({"CITY": {"bhilai"}, "PIN": {"490020"}}, {"CITY": {"bhilai"}, "PIN": {"490020"}})
+    assert fold({"PIN": {"490020"}}, {"CITY": {"durg"}}, either) == ({"PIN": {"490020"}}, {"CITY": {"durg"}})
+    assert fold(gold, {}, ()) == (gold, {})
 
 
 def test_messages_put_the_examples_between_the_system_prompt_and_the_address():
@@ -109,7 +112,7 @@ def test_run_scores_fields_and_keeps_the_raw_answers(tiny, tmp_path, monkeypatch
 def test_run_draws_its_examples_with_the_seed_and_never_from_the_eval_file(tiny, tmp_path, monkeypatch):
     recs = read_jsonl(HAND20)
     pool = tmp_path / "pool.jsonl"
-    write_jsonl(pool, [{**r, "id": "pool-" + r["id"]} for r in recs])  # stands in for the real-train pool
+    write_jsonl(pool, [{**r, "id": "pool-" + r["id"], "split": "train"} for r in recs])  # stands in for the real-train pool
     seen = []
     monkeypatch.setitem(llm.SYSTEMS, "fake", System(tiny, None, "Parse it.", {"pin": "PIN", "city": "CITY"}))
     monkeypatch.setattr(llm, "generate",
@@ -121,8 +124,13 @@ def test_run_draws_its_examples_with_the_seed_and_never_from_the_eval_file(tiny,
     assert len(seen[0]) == 3 and seen[0] == seen[1] != seen[2]  # the seed picks the examples
     assert all(text in {r["text"] for r in recs} and set(json.loads(shown)) == {"pin", "city"} for text, shown in seen[0])
     assert res["seed"] == 7 and res["config"]["n_shots"] == 3 and res["config"]["shots"] == str(pool)
-    assert res["config"]["seconds"] >= 0
+    assert res["config"]["seconds"] >= 0 and len(res["config"]["shot_ids"]) == 3
+    assert all(i.startswith("pool-hand-") for i in res["config"]["shot_ids"])  # which examples were shown is on record
+    same_ids = tmp_path / "same.jsonl"
+    write_jsonl(same_ids, [{**r, "split": "train"} for r in recs])
     with pytest.raises(ValueError, match="also in the eval file"):
-        run("fake", HAND20, "20261111-fake-hand20-s7", seed=7, results_dir=tmp_path, device="cpu", shots_path=HAND20, n_shots=3)
+        run("fake", HAND20, "20261111-fake-hand20-s7", seed=7, results_dir=tmp_path, device="cpu", shots_path=same_ids, n_shots=3)
+    with pytest.raises(ValueError, match="train split"):  # the fixture rows are marked dev
+        run("fake", pool, "20261111-fake-pool-s7", seed=7, results_dir=tmp_path, device="cpu", shots_path=HAND20, n_shots=3)
     with pytest.raises(ValueError, match="-s7"):
         run("fake", HAND20, "20261111-fake-hand20-s8", seed=7, **kw)

@@ -16,7 +16,7 @@ import transformers
 from torch.utils.data import DataLoader
 from transformers import AutoModelForTokenClassification, AutoTokenizer, DataCollatorForTokenClassification
 
-from src.data import TAGS, read_jsonl
+from src.data import TAGS, read_jsonl, require_train
 from src.eval import evaluate, write_predictions, write_results
 
 MODELS = {"muril": "google/muril-base-cased", "xlmr": "FacebookAI/xlm-roberta-base"}
@@ -108,6 +108,7 @@ def run(train_path, eval_paths, run_ids, model: str = "muril", seed: int = 42, r
     tr, evals = read_jsonl(train_path), [read_jsonl(p) for p in eval_paths]  # before training: a mistyped path must not cost a GPU run
     if not tr or not all(evals):
         raise ValueError("the train file or an eval file is empty")
+    require_train(tr, str(train_path))
     train_ids = {r["id"] for r in tr}
     if any(r["id"] in train_ids for ev in evals for r in ev):  # the frozen test set must never be trained on (CLAUDE.md rule 2)
         raise ValueError("a training address is also in an eval file")

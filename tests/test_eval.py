@@ -119,6 +119,21 @@ def test_interval_resamples_whole_groups():
     assert {tuple(sorted(set(idx))) for idx in seen} == {(0, 1), (2, 3), (0, 1, 2, 3)}
 
 
+def test_a_span_of_punctuation_alone_is_not_a_field():
+    assert fields_from("Pune , 411001", ["B-CITY", "B-CITY", "B-PIN"]) == {"CITY": {"pune"}, "PIN": {"411001"}}
+
+
+def test_paired_bootstrap_resamples_groups_when_given_them():
+    gold = [["B-CITY", "O", "B-PIN"]] * 40
+    worse = [["O", "O", "O"]] * 10 + gold[10:]  # wrong on the whole of the first respondent, right on the rest
+    groups = [f"R{i // 10}" for i in range(40)]
+    scores = span_scorer(gold, gold), span_scorer(gold, worse)
+    plain = paired_bootstrap(*scores, 40, n=300, seed=0)["ci95"]
+    grouped = paired_bootstrap(*scores, 40, n=300, seed=0, groups=groups)["ci95"]
+    assert grouped[1] - grouped[0] > plain[1] - plain[0]  # four respondents are far less certain than forty addresses
+    assert grouped[0] == 0.0  # some resamples leave the first respondent out altogether
+
+
 def test_paired_bootstrap_sees_a_real_difference_and_no_fake_one():
     gold = [["B-CITY", "O", "B-PIN"]] * 40
     worse = [["B-CITY", "O", "O"]] * 20 + [["O", "O", "O"]] * 20
@@ -148,6 +163,15 @@ def test_evaluate_resamples_respondents_when_records_carry_them(records):
     res = evaluate(grouped, pred, run_id="x", model="m", data="d", seed=0, bootstrap_n=20)
     assert res["ci_unit"] == "respondent" and res["field_ci95"] == [1.0, 1.0]
     assert evaluate(records, pred, run_id="x", model="m", data="d", seed=0, bootstrap_n=20)["ci_unit"] == "address"
+    # with mistakes in it, the interval must be the one that resamples respondents, for spans and for fields
+    wrong = [["O"] * len(p) if i in (0, 1, 6) else p for i, p in enumerate(pred)]
+    groups, gold = [f"R{i // 2}" for i in range(len(records))], [r["tags"] for r in records]
+    res = evaluate(grouped, wrong, run_id="x", model="m", data="d", seed=0, bootstrap_n=60)
+    assert res["ci95"] == list(bootstrap_ci(gold, wrong, n=60, seed=0, groups=groups))
+    assert res["ci95"] != list(bootstrap_ci(gold, wrong, n=60, seed=0))
+    fields = [[fields_from(r["text"], tags) for r, tags in zip(records, side)] for side in (gold, wrong)]
+    assert res["field_ci95"] == list(interval(field_scorer(*fields), len(records), 60, 0, groups))
+    assert res["field_ci95"] != list(interval(field_scorer(*fields), len(records), 60, 0))
 
 
 def test_predictions_round_trip(records, tmp_path):
@@ -156,3 +180,5 @@ def test_predictions_round_trip(records, tmp_path):
     assert read_predictions(tmp_path / "20261111-x-s0.pred.jsonl", records) == pred
     with pytest.raises(ValueError, match="different addresses"):
         read_predictions(tmp_path / "20261111-x-s0.pred.jsonl", records[:-1])
+    with pytest.raises(ValueError, match="different addresses"):  # the same addresses in another order
+        read_predictions(tmp_path / "20261111-x-s0.pred.jsonl", records[::-1])

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import sklearn_crfsuite
 
-from src.data import read_jsonl
+from src.data import read_jsonl, require_train
 from src.eval import evaluate, write_predictions, write_results
 from src.models.rules import BUILDING_CUES, DISTRICT_CUES, HOUSE_CUES, LOCALITY_CUES, POSTPOSITIONS, RELATION, STREET_CUES
 from src.normalize.gazetteer import Gazetteer, canonical_state
@@ -77,6 +77,7 @@ def run(train_path, eval_path, run_id: str, seed: int = 0, n_train: int | None =
         gaz: Gazetteer | None = None, max_iter: int = 100, c1: float = 0.1, c2: float = 0.1, bootstrap_n: int = 1000) -> dict:
     lex = Lexicon(gaz or Gazetteer.load())
     tr = read_jsonl(train_path)
+    require_train(tr, str(train_path))
     n_total = len(tr)
     if n_train:  # the seed only matters here: lbfgs on the full set is deterministic, so seeds agree unless n_train is set
         tr = random.Random(seed).sample(tr, min(n_train, n_total))

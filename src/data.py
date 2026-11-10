@@ -136,6 +136,13 @@ def validate(rec: dict) -> None:
         raise ValueError(f"{rec['id']}: meta must be an object")
 
 
+def require_train(records: Iterable[dict], what: str) -> None:
+    """Refuse dev and test records: they are never trained on or shown to a model as examples (CLAUDE.md rule 2)."""
+    other = sorted({str(r.get("split")) for r in records} - {"train"})
+    if other:
+        raise ValueError(f"{what} holds {other} records; only the train split may be trained on or used as examples")
+
+
 def read_jsonl(path: str | Path) -> list[dict]:
     with open(path, encoding="utf-8") as f:  # not splitlines(): it also splits on U+2028/U+0085, which json.dumps leaves unescaped
         records = [json.loads(line) for line in f if line.strip()]

@@ -4,10 +4,14 @@
 
 runs.md        one row per results file of a tagger or a JSON system
 configs.md     the seeds of one configuration averaged (mean ± standard deviation)
-shared.md      E1: each existing system on the labels it shares with us, and our systems rescored on those same labels
-compare.md     E2-E4: one configuration minus another, with a paired bootstrap over the same addresses; an interval
-               that includes zero is "no measurable effect" (initials.md §8)
+shared.md      E1, E6: each existing system on the labels it shares with us; our systems rescored on those labels by
+               that system's own rules, from their saved tags; and the difference with a paired bootstrap
+compare.md     E2-E4: one configuration minus another, with a paired bootstrap over the same addresses
 normaliser.md  E5: PIN checks and fills
+
+A run that was repeated counts once: the newest results file of a configuration and seed wins. A difference whose
+interval includes zero is "no measurable effect" (initials.md §8). Intervals cover the choice of test addresses
+(respondents on real data), not the training seed.
 
 shortcut: tables only, no figures (matplotlib is not installed); add them when the report needs a plot.
 """
@@ -19,9 +23,9 @@ from datetime import date
 from pathlib import Path
 
 from src.data import read_jsonl
-from src.eval import field_scores, fields_from, paired_bootstrap, read_predictions, span_scorer
-from src.models.llm import fold, gold_fields
-from src.models.zeroshot import only
+from src.eval import field_scorer, field_scores, fields_from, paired_bootstrap, read_predictions, span_scorer
+from src.models.llm import fold, gold_fields, parse_json, to_fields
+from src.models.zeroshot import only, trim
 
 _EVALS = ("realdev", "realtest")
 PAIRS = [pair for ev in _EVALS for pair in (
@@ -32,13 +36,20 @@ PAIRS = [pair for ev in _EVALS for pair in (
        ("XLM-R minus MuRIL, full noise", f"xlmr-synfull-{ev}", f"muril-synfull-{ev}")])]
 
 
-def load(results_dir) -> list[dict]:
-    return [json.loads(p.read_text(encoding="utf-8")) for p in sorted(Path(results_dir).glob("*.json"))]
-
-
 def config_key(run_id: str) -> str:
     """The run id without its date and seed: the runs of one configuration share it."""
     return re.sub(r"^\d{8}-|-s\d+$", "", run_id)
+
+
+def load(results_dir) -> list[dict]:
+    """Every results file, except that a repeated run counts once: the newest of a configuration and seed."""
+    newest: dict[tuple, dict] = {}
+    for path in sorted(Path(results_dir).glob("*.json")):
+        r = json.loads(path.read_text(encoding="utf-8"))
+        key = (config_key(r["run_id"]), r.get("seed"))
+        if key not in newest or r["run_id"] > newest[key]["run_id"]:  # a run id starts with its date
+            newest[key] = r
+    return sorted(newest.values(), key=lambda r: r["run_id"])
 
 
 def gold_path(data: str) -> Path:
@@ -49,6 +60,12 @@ def gold_path(data: str) -> Path:
     if not found:
         raise FileNotFoundError(f"no gold file for {data!r}: looked in {[str(p) for p in options]}")
     return found[0]
+
+
+def _groups(records: list[dict]) -> list[str] | None:
+    """The respondents to resample, when every record names one (real data); None resamples single addresses."""
+    named = all(r.get("meta", {}).get("respondent") for r in records)
+    return [r["meta"]["respondent"] for r in records] if named else None
 
 
 def _table(header: list[str], rows: list[list]) -> str:
@@ -66,12 +83,13 @@ def runs_table(results: list[dict]) -> str:
     rows = []
     for r in (r for r in results if "field" in r):
         span = r.get("span")  # a JSON system has no spans
+        enough = (span or {}).get("macro_min30", {}).get("f1")  # absent from files written before 11 Nov 2026
         rows.append([r["run_id"], r["model"], r["data"], r["n"],
                      f"{span['micro']['f1']:.3f} ({r['ci95'][0]:.3f}–{r['ci95'][1]:.3f})" if span else "–",
-                     f"{span['macro']['f1']:.3f}" if span else "–", f"{r['field']['micro']['f1']:.3f}",
-                     f"{r['exact_match']:.3f}" if span else "–"])
-    return _table(["Run ID", "Model", "Scored on", "n", "Span micro F1 (95% interval)", "Span macro F1", "Field micro F1",
-                   "Exact match"], rows)
+                     f"{span['macro']['f1']:.3f}" if span else "–", f"{enough:.3f}" if enough is not None else "–",
+                     f"{r['field']['micro']['f1']:.3f}", f"{r['exact_match']:.3f}" if span else "–"])
+    return _table(["Run ID", "Model", "Scored on", "n", "Span micro F1 (95% interval)", "Span macro F1",
+                   "Span macro F1, labels with 30+ spans", "Field micro F1", "Exact match"], rows)
 
 
 def configs_table(results: list[dict]) -> str:
@@ -85,34 +103,61 @@ def configs_table(results: list[dict]) -> str:
                   rows)
 
 
-def _same_labels_f1(theirs: dict, records: list[dict], pred: list[list[str]]) -> float:
-    """Field micro F1 of one of our systems, scored the way `theirs` was: on its shared labels, by its rules."""
-    shared, either = theirs["config"]["shared_labels"], tuple(theirs["config"].get("either", ()))
-    if "span" in theirs:  # a tagger: blank every other label on both sides, as zeroshot.run does
-        gold_f = [fields_from(r["text"], only(r["tags"], set(shared))) for r in records]
-        pred_f = [fields_from(r["text"], only(p, set(shared))) for r, p in zip(records, pred)]
-    else:  # a JSON system: states in full, and its one key may stand for several of our labels, as in llm.run
-        pred_f = [gold_fields({"text": r["text"], "tags": p}) for r, p in zip(records, pred)]
-        if either:  # our tags name the district DISTRICT; put it under the same key their answer uses
-            pred_f = [{**{k: v for k, v in f.items() if k not in either},
-                       either[0]: set().union(*(f.get(label, set()) for label in either))} for f in pred_f]
-        gold_f = [fold(gold_fields(r), f, either) for r, f in zip(records, pred_f)]
-    return field_scores(gold_f, pred_f, shared)["micro"]["f1"]
+def _by_their_rules(theirs: dict, records: list[dict], tags: list[list[str]]) -> tuple[list[dict], list[dict]]:
+    """Gold and predicted fields per address for a tagger's `tags`, scored the way `theirs` is scored by its own script:
+    stray commas trimmed, its shared labels only, and for a JSON system states in full and its one key folded."""
+    shared, either = set(theirs["config"]["shared_labels"]), tuple(theirs["config"].get("either", ()))
+    tags = [trim(r["text"], t) for r, t in zip(records, tags)]
+    if "span" in theirs:  # a tagger, as in zeroshot.run
+        return ([fields_from(r["text"], only(r["tags"], shared)) for r in records],
+                [fields_from(r["text"], only(t, shared)) for r, t in zip(records, tags)])
+    folded = [fold(gold_fields(r), gold_fields({"text": r["text"], "tags": t}), either) for r, t in zip(records, tags)]
+    return [g for g, _ in folded], [p for _, p in folded]  # a JSON system, as in llm.run
 
 
-def shared_table(results: list[dict], results_dir) -> str:
+def _their_fields(theirs: dict, records: list[dict], results_dir) -> tuple[list[dict], list[dict]] | None:
+    """Gold and predicted fields per address for the existing system itself, from its saved answers; None without them."""
+    path = Path(results_dir) / f"{theirs['run_id']}.pred.jsonl"
+    if not path.exists():
+        return None
+    if "span" in theirs:
+        return _by_their_rules(theirs, records, read_predictions(path, records))
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+    if [row["id"] for row in rows] != [r["id"] for r in records]:
+        raise ValueError(f"{path} holds answers for different addresses")
+    config = theirs["config"]
+    folded = [fold(gold_fields(r), to_fields(parse_json(row["output"]), config["mapping"]), tuple(config.get("either", ())))
+              for r, row in zip(records, rows)]
+    return [g for g, _ in folded], [p for _, p in folded]
+
+
+def shared_table(results: list[dict], results_dir, n: int = 1000) -> str:
     rows = []
-    ours = [r for r in results if "span" in r and "shared_labels" not in r.get("config", {})]
+    # ours: a tagger that is not one of the existing systems; tuning runs are not systems we report
+    ours = [r for r in results if "span" in r and "shared_labels" not in r.get("config", {}) and "-tune-" not in r["run_id"]]
     for theirs in (r for r in results if "shared_labels" in r.get("config", {})):
         records = read_jsonl(gold_path(theirs["data"]))
+        if theirs["n"] != len(records):
+            raise ValueError(f"{theirs['run_id']} was scored on {theirs['n']} addresses, but {gold_path(theirs['data'])} "
+                             f"now holds {len(records)}: run it again")
+        shared = theirs["config"]["shared_labels"]
+        its_own = _their_fields(theirs, records, results_dir)
         for r in ours:
             pred_file = Path(results_dir) / f"{r['run_id']}.pred.jsonl"
-            if Path(r["data"]).name == Path(theirs["data"]).name and pred_file.exists():
-                rows.append([theirs["run_id"], ", ".join(theirs["config"]["shared_labels"]),
-                             f"{theirs['field']['micro']['f1']:.3f}", r["run_id"],
-                             f"{_same_labels_f1(theirs, records, read_predictions(pred_file, records)):.3f}", theirs["data"]])
+            if r["data"] != theirs["data"] or not pred_file.exists():
+                continue
+            gold_f, pred_f = _by_their_rules(theirs, records, read_predictions(pred_file, records))
+            cells = ["–", "–", "–"]
+            if its_own:
+                d = paired_bootstrap(field_scorer(gold_f, pred_f, shared), field_scorer(*its_own, shared), len(records),
+                                     n=n, groups=_groups(records))
+                lo, hi = d["ci95"]
+                cells = [f"{d['diff']:+.3f}", f"{lo:+.3f} to {hi:+.3f}",
+                         "ours is higher" if lo > 0 else "it is higher" if hi < 0 else "no measurable effect"]
+            rows.append([theirs["run_id"], ", ".join(shared), f"{theirs['field']['micro']['f1']:.3f}", r["run_id"],
+                         f"{field_scores(gold_f, pred_f, shared)['micro']['f1']:.3f}", *cells, theirs["data"]])
     return _table(["Existing system", "Labels it shares with us", "Its field micro F1", "Our system",
-                   "Ours on the same labels", "Scored on"], rows)
+                   "Ours on the same labels", "Ours minus it", "95% interval", "Verdict", "Scored on"], rows)
 
 
 def compare_table(results: list[dict], results_dir, pairs=PAIRS, n: int = 1000) -> str:
@@ -132,9 +177,7 @@ def compare_table(results: list[dict], results_dir, pairs=PAIRS, n: int = 1000) 
             scorers = [span_scorer(gold, read_predictions(Path(results_dir) / f"{r['run_id']}.pred.jsonl", records)) for r in runs]
             return lambda idx: statistics.mean(score(idx) for score in scorers)
 
-        by_respondent = all(r.get("meta", {}).get("respondent") for r in records)
-        groups = [r["meta"]["respondent"] for r in records] if by_respondent else None
-        d = paired_bootstrap(mean_score(a), mean_score(b), len(records), n=n, groups=groups)
+        d = paired_bootstrap(mean_score(a), mean_score(b), len(records), n=n, groups=_groups(records))
         lo, hi = d["ci95"]
         verdict = "first is higher" if lo > 0 else "second is higher" if hi < 0 else "no measurable effect"
         rows.append([title, a[0]["data"], f"{len(a)} and {len(b)}", f"{d['diff']:+.3f}", f"{lo:+.3f} to {hi:+.3f}", verdict])
@@ -158,8 +201,9 @@ def main(results_dir="results", out_dir="report/tables", n: int = 1000) -> None:
     out.mkdir(parents=True, exist_ok=True)
     note = (f"Generated by `scripts/make_tables.py` from `{results_dir}/` on {date.today().isoformat()}. "
             "Do not edit by hand: run the script again.\n\n")
-    tables = {"runs": runs_table(results), "configs": configs_table(results), "shared": shared_table(results, results_dir),
-              "compare": compare_table(results, results_dir, n=n), "normaliser": normaliser_table(results)}
+    tables = {"runs": runs_table(results), "configs": configs_table(results),
+              "shared": shared_table(results, results_dir, n=n), "compare": compare_table(results, results_dir, n=n),
+              "normaliser": normaliser_table(results)}
     for name, table in tables.items():
         (out / f"{name}.md").write_text(note + table, encoding="utf-8")
 

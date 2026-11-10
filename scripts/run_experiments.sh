@@ -2,12 +2,14 @@
 # E2, E3 and E4: one training run per config and seed (build-plan step 12). No framework, just loops.
 #
 #   scripts/run_experiments.sh --dry-run          # list the 48 runs without starting any
-#   scripts/run_experiments.sh e2                 # one experiment: e2 | e3 | e4 | xlmr | all (default)
+#   scripts/run_experiments.sh e2 e3              # some experiments: e2 | e3 | e4 | xlmr | all (default)
 #   scripts/run_experiments.sh --final all        # also score the real TEST set: final runs only (CLAUDE.md rule 2)
 #
 # Each run takes about 8 minutes on the RTX 4060, so all 48 take a little over 6 hours: ask the team first (rule 7).
 # A run whose last results file exists is skipped, so the script can be stopped and started again on the same day;
 # on a later day pass the first day's date: DATE=20261120 scripts/run_experiments.sh e3
+# A --final run trains again (models are not kept) and so writes new dev results beside the test results. The tables
+# use the newest run of each configuration and seed, so nothing is counted twice; update the run table in logs.md.
 # Not included: the clean + one-family runs (only-N1 .. only-N8), still an open decision (build-plan C3).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -16,23 +18,30 @@ DATE=${DATE:-$(date +%Y%m%d)}
 SEEDS=(42 43 44)   # training seeds
 DATA_SEED=42       # the synthetic data is generated once and shared by the three training seeds
 KS=(25 50 100 200) # real addresses added in E4; k = 0 is E2's full-noise run
+RESULTS=${RESULTS:-results}
 
-DRY=0 FINAL=0 WHAT=all
+DRY=0 FINAL=0 WHAT=()
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY=1 ;;
     --final) FINAL=1 ;;
-    e2 | e3 | e4 | xlmr | all) WHAT=$arg ;;
+    e2 | e3 | e4 | xlmr) WHAT+=("$arg") ;;
+    all) WHAT=(e2 e3 e4 xlmr) ;;
     *) echo "unknown argument: $arg" >&2; exit 2 ;;
   esac
 done
+if [ "${#WHAT[@]}" = 0 ]; then WHAT=(e2 e3 e4 xlmr); fi
 
 say() { if [ "$DRY" = 1 ]; then echo "$*"; else echo "+ $*" >&2; "$@"; fi; }
 
 need() { [ "$DRY" = 1 ] || [ -f "$1" ] || { echo "missing $1: $2" >&2; exit 1; }; }
 need data/real/dev.jsonl "annotate and export the real dev set first (src.annotate export)"
 if [ "$FINAL" = 1 ]; then need data/real/test.jsonl "the real test set is not exported yet"; fi
-if [ "$WHAT" = e4 ] || [ "$WHAT" = all ]; then need data/real/train.jsonl "E4 draws its k addresses from the real-train pool"; fi
+if [[ " ${WHAT[*]} " == *" e4 "* ]] && [ "$DRY" = 0 ]; then
+  need data/real/train.jsonl "E4 draws its k addresses from the real-train pool"
+  pool=$(wc -l < data/real/train.jsonl)  # checked now, not after hours of E2 and E3
+  [ "$pool" -ge "${KS[-1]}" ] || { echo "data/real/train.jsonl holds $pool addresses; E4 needs ${KS[-1]}" >&2; exit 1; }
+fi
 
 synthetic() { # config [n_train]: generate the set unless it is already there
   local config=$1 n=${2:-20000} dir=data/synthetic/$1
@@ -45,9 +54,9 @@ train() { # model tag train_file synthetic_config seed
   local evals=("data/synthetic/$config/test.jsonl" data/real/dev.jsonl)
   local ids=("$DATE-$model-$tag-syntest-s$seed" "$DATE-$model-$tag-realdev-s$seed")
   if [ "$FINAL" = 1 ]; then evals+=(data/real/test.jsonl) ids+=("$DATE-$model-$tag-realtest-s$seed"); fi
-  if [ -f "results/${ids[-1]}.json" ]; then echo "skip $model $tag s$seed: results exist" >&2; return; fi
+  if [ -f "$RESULTS/${ids[-1]}.json" ]; then echo "skip $model $tag s$seed: results exist" >&2; return; fi
   say uv run python -m src.models.transformer --model "$model" --train "$train_file" --seed "$seed" \
-    --eval "${evals[@]}" --run-id "${ids[@]}"
+    --eval "${evals[@]}" --run-id "${ids[@]}" --results-dir "$RESULTS"
 }
 
 e2() { # clean against full noise
@@ -85,7 +94,4 @@ xlmr() { # the second backbone on full noise
   for seed in "${SEEDS[@]}"; do train xlmr synfull data/synthetic/full/train.jsonl full "$seed"; done
 }
 
-case "$WHAT" in
-  all) e2; e3; e4; xlmr ;;
-  *) "$WHAT" ;;
-esac
+for what in "${WHAT[@]}"; do "$what"; done

@@ -43,7 +43,7 @@ def tiny(tmp_path_factory):
 def train_file(tmp_path_factory):
     """The hand-labelled addresses under other ids: run() refuses to train on an address that is also in an eval file."""
     path = tmp_path_factory.mktemp("train") / "train.jsonl"
-    write_jsonl(path, [{**r, "id": "t-" + r["id"]} for r in read_jsonl(HAND20)])
+    write_jsonl(path, [{**r, "id": "t-" + r["id"], "split": "train"} for r in read_jsonl(HAND20)])
     return path
 
 
@@ -129,6 +129,8 @@ def test_run_reads_every_eval_file_before_training(tiny, tmp_path, no_training):
         run(HAND20, [tmp_path / "empty.jsonl"], ["a-s42"], model=tiny, results_dir=tmp_path)
 
 
-def test_run_refuses_to_train_on_an_address_it_is_scored_on(tiny, tmp_path, no_training):
-    with pytest.raises(ValueError, match="also in an eval file"):
-        run(HAND20, [HAND20], ["a-s42"], model=tiny, results_dir=tmp_path)
+def test_run_refuses_to_train_on_an_address_it_is_scored_on(tiny, train_file, tmp_path, no_training):
+    with pytest.raises(ValueError, match="also in an eval file"):  # the overlap is in the second eval file
+        run(train_file, [HAND20, train_file], ["a-s42", "b-s42"], model=tiny, results_dir=tmp_path)
+    with pytest.raises(ValueError, match="train split"):  # the fixture rows are marked dev
+        run(HAND20, [train_file], ["a-s42"], model=tiny, results_dir=tmp_path)

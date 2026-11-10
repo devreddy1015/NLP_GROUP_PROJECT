@@ -30,7 +30,7 @@ All 16 steps of `build-plan.md` §3.2 are built: data format and tokenizer, eval
 
 ## Ground rules
 1. **Privacy.** Never collect, store or commit real residential addresses, people's names or phone numbers. Real data = addresses of public places only (shops, temples, schools, hospitals, offices). The generator does not need fake names or phones either; leave them out.
-2. **Frozen test set.** Once the real test set is annotated, never train, tune or adjust prompts on it. Make every decision on the real dev split. Run the test set only for final runs.
+2. **Frozen test set.** Once the real test set is annotated, never train, tune or adjust prompts on it. Make every decision on the real dev split. Run the test set only for final runs. The code backs this up: the trainers, the E4 mixer and the few-shot path refuse any record that is not from the train split (`src.data.require_train`), and the experiment loop scores the test set only with `--final`.
 3. **Real numbers only.** Every number in the report or slides must come from a file in `results/` and a row in the `logs.md` run table. Never estimate, round up or invent a result. If a run fails, log it as failed.
 4. **Headline = real test set.** Synthetic test scores are near 99% and say little (`research.md` §1). Report them only to show the gap.
 5. **Reproducibility.** Fix seeds; run the main models with 3 seeds and report mean ± std; save the config next to each result.

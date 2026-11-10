@@ -14,12 +14,31 @@ Newest entries first. Add one entry per work session, and one row per training o
 
 ---
 
+### 2026-11-11 (03:30–03:55): Claude Code, review of steps 12, 14, 15 and 16, and its fixes
+- **Review (mle-reviewer):** the statistics are right (respondent resampling, percentile indices; the address-level intervals already logged are unchanged), the loop never scores the real test set without `--final`, and E4's subsets are nested. It found the problems below. Each is fixed with a test.
+- **Fixed in the tables (`scripts/make_tables.py`):**
+  - Runs were matched to an existing system by file name only. A zero-shot run on real dev would have been paired with our synthetic-dev runs and stopped the script with no tables. They are now matched on the full data name, and `rules.py` names its data like every other script (`fixtures/handlabelled20`).
+  - A results file scored on a different number of addresses than the gold file now holds is refused.
+  - A repeated run counts once: the newest of a configuration and seed. This matters for `--final` runs, which train again.
+  - Tuning runs are no longer listed among our systems in `shared.md`. Side effect: the MuRIL row there is the first-guess run, because the run at the fixed settings has a tuning ID.
+  - Our systems are rescored by exactly the other system's rules: commas trimmed, and the parser's city-or-district key counted once on both sides. Before, a tagger that named both scored 0.833 where the parser scored 0.800 for the same content (reviewer's example).
+  - `shared.md` gives the difference to each existing system with a paired field-level interval. `runs.md` shows macro F1 over the labels with at least 30 spans.
+- **Fixed for ground rule 2:** `src.data.require_train` refuses anything but train-split records as training data (`transformer`, `crf`, `mix`) or as few-shot examples (`llm`). Before, `--shots data/real/test.jsonl` would have passed. The ids of the examples shown are stored in the results file.
+- **Fixed in scoring:** a predicted span of punctuation alone is no longer a field. The stored `field` scores of our MuRIL and XLM-R runs were computed under the old rule and can be about 0.004 lower than a rescoring (reviewer's measurement); their span scores are not affected. Rules, CRF and the three JSON-system runs were re-run and their logged scores did not change.
+- **Fixed in the loop script:** several experiments can be named at once (`e2 e3` used to run only `e3`); E4 checks that the real pool holds 200 addresses before anything trains; `RESULTS=` sets the results folder.
+- **Tests:** 244 passing, 91 % coverage. They now fail if respondent groups are ignored (in `evaluate`, `paired_bootstrap` or `compare_table`), if only the first seed is compared, if predictions are matched as an unordered set, if E4's subsets stop nesting in a large pool, or if a finished run is not skipped.
+- **Results (hand20, `report/tables/shared.md`; these replace the same-label numbers quoted in the two entries below):** against the abr-6024 parser's 0.645 on its eight labels: CRF 0.848, rules 0.821, XLM-R 0.778, MuRIL (first-guess run) 0.777. Against the few-shot LLM's 0.484 on nine labels: CRF 0.842, rules 0.828, XLM-R 0.772, MuRIL 0.754. Every interval excludes zero. **This is not a finding:** the 20 addresses were written by us in our own conventions and were used to fix the generator, so they favour our systems.
+- **Not fixed (known limits):**
+  - The paired interval covers the choice of test addresses, not the training seed, and unequal numbers of seeds are not corrected.
+  - The bootstrap calls seqeval once per resample. That is most of the 2.5 minutes of scoring after each training run, and about a minute per pair in `compare.md` on 260 addresses with three seeds a side (reviewer's timing).
+  - The dry run prints the `generate full` command more than once on a fresh checkout. `app/demo.py` got only a light read.
+
 ### 2026-11-11 (03:18–03:25): Claude Code, step 14 (few-shot LLM)
 - **Did (tests first):** `src/models/llm.py` gains the few-shot system `l1-qwen`: `Qwen/Qwen2.5-1.5B-Instruct` at a pinned commit (Apache-2.0, 3.1 GB; the base model the abr-6024 parser was fine-tuned from) with a prompt in our nine labels that asks for the pieces copied exactly as written. `--shots FILE --n-shots N --seed S` draws the examples. An example that is also in the eval file is refused (rule 2), and the run ID must end in `-s<seed>`. An answer may hold a list per key. Each results file records the generation time.
 - **Results (hand20; a smoke check):** the two `l1-qwen` rows below.
   - Five examples drawn from synthetic `full` train, a stand-in because there is no real-train pool yet: valid JSON 20 of 20, field micro F1 0.484, 11.1 s for 20 addresses on the RTX 4060.
   - No examples: valid JSON 9 of 20, field micro F1 0.288.
-  - Scored the same way on the same nine labels (`report/tables/shared.md`): CRF 0.842, rules 0.828, XLM-R 0.768, MuRIL at the fixed settings 0.758.
+  - Scored the same way on the same nine labels (`report/tables/shared.md` as it then was; superseded by the 03:30–03:55 entry): CRF 0.842, rules 0.828, XLM-R 0.768, MuRIL at the fixed settings 0.758.
 - **Decided (provisional; `initials.md` §12, §13):** the L1 model and prompt above.
 - **Problems:**
   - The examples must come from the real-train pool, and the prompt may be changed on real dev only. Both wait for data.
@@ -48,7 +67,7 @@ Newest entries first. Add one entry per work session, and one row per training o
 - **Did:** rules and CRF re-run under their existing run IDs so that they have per-address tags. Their scores are unchanged; the files gained `field_ci95` and `ci_unit`.
 - **Fixed (tests first; commit `27381c5`):** the India Post file has a `Test Office` row at PIN 999999 and two army base post offices at 9000xx. The normaliser took 999999 as valid and filled in a district from it. `Gazetteer.lookup` now returns nothing for a PIN that does not start with 1 to 8. The gazetteer file and the generator are untouched, because dropping the rows would reshuffle the PIN split. No address in `full` uses those PINs, so no logged number changes.
 - **Tests:** 228 passing, 91 % coverage.
-- **Results (hand20, from `report/tables/shared.md`; a smoke check):** on the eight labels the abr-6024 parser shares with us it scores 0.645 field micro F1. Scored the same way, our CRF gets 0.853, rules 0.828, MuRIL at the fixed settings 0.781 and XLM-R 0.777.
+- **Results (hand20, from `report/tables/shared.md` as it then was; a smoke check, superseded by the 03:30–03:55 entry):** on the eight labels the abr-6024 parser shares with us it scores 0.645 field micro F1. Scored the same way, our CRF gets 0.853, rules 0.828, MuRIL at the fixed settings 0.781 and XLM-R 0.777.
 - **Problems:** no figures (matplotlib is not installed). `shared.md` lists the tuning runs among our systems. The three rows whose PIN starts with 9 are still in the gazetteer and the generator could sample them; drop them the next time the synthetic sets are regenerated.
 - **Next:** Step 15 (demo), step 14 (few-shot LLM).
 

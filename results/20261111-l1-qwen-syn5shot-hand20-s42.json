@@ -32,12 +32,19 @@
   ],
   "n_shots": 5,
   "shots": "data/synthetic/full/train.jsonl",
-  "seconds": 11.1,
+  "shot_ids": [
+   "syn-full-train-003648",
+   "syn-full-train-000819",
+   "syn-full-train-009012",
+   "syn-full-train-008024",
+   "syn-full-train-007314"
+  ],
+  "seconds": 11.3,
   "device": "cuda",
   "torch": "2.15.0+cu132",
   "transformers": "5.22.2"
  },
- "created": "2026-11-10T21:50:21+00:00",
+ "created": "2026-11-10T22:14:56+00:00",
  "n": 20,
  "json_valid": 1.0,
  "field": {

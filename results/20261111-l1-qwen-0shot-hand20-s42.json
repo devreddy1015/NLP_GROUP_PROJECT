@@ -32,12 +32,13 @@
   ],
   "n_shots": 0,
   "shots": null,
-  "seconds": 6.7,
+  "shot_ids": [],
+  "seconds": 7.1,
   "device": "cuda",
   "torch": "2.15.0+cu132",
   "transformers": "5.22.2"
  },
- "created": "2026-11-10T21:50:37+00:00",
+ "created": "2026-11-10T22:15:18+00:00",
  "n": 20,
  "json_valid": 0.45,
  "field": {

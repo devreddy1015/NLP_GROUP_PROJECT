@@ -59,3 +59,5 @@ def test_run_writes_results_and_subsamples(gaz, synthetic, tmp_path):
               results_dir=tmp_path, gaz=gaz, max_iter=5, bootstrap_n=10)
     assert big["config"]["n_train"] == big["config"]["n_train_total"]  # asking for more than there is uses the whole set
     assert res["config"]["train"].endswith("train.jsonl") and 0 <= saved["span"]["micro"]["f1"] <= 1
+    with pytest.raises(ValueError, match="train split"):  # the fixture rows are marked dev
+        run(HAND20, synthetic / "dev.jsonl", run_id="20261110-crf-test-s3", results_dir=tmp_path, gaz=gaz)

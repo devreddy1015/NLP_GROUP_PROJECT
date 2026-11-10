@@ -19,7 +19,7 @@ import torch
 import transformers
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from src.data import LABELS, normalise_value, read_jsonl, tags_to_spans, tokenize
+from src.data import LABELS, normalise_value, read_jsonl, require_train, tags_to_spans, tokenize
 from src.eval import field_scores, write_results
 from src.normalize.gazetteer import canonical_state
 
@@ -94,20 +94,27 @@ def answer(record: dict, mapping: dict[str, str]) -> str:
 def gold_fields(record: dict) -> dict[str, set[str]]:
     fields: dict[str, set[str]] = {}
     for start, end, label in tags_to_spans(tokenize(record["text"]), record["tags"]):
-        fields.setdefault(label, set()).add(_value(label, record["text"][start:end]))
+        value = _value(label, record["text"][start:end])
+        if value:  # a span of punctuation alone holds nothing
+            fields.setdefault(label, set()).add(value)
     return fields
 
 
-def fold(gold: dict[str, set[str]], pred: dict[str, set[str]], either: tuple[str, ...]) -> dict[str, set[str]]:
+def fold(gold: dict[str, set[str]], pred: dict[str, set[str]], either: tuple[str, ...]) -> tuple[dict, dict]:
     """One key of theirs may hold any of several labels of ours (the parser's `city` is our CITY or our DISTRICT).
 
-    The gold then counts as found if the prediction matches any of them, and as a single miss otherwise.
+    Those labels are folded into the first, on both sides, and count once: one hit if the prediction matches any of
+    the gold strings, one miss otherwise. A tagger that names both the city and the district therefore scores the
+    same as a system with a single key. Returns (gold, pred).
     """
-    union = set().union(*(gold.get(label, set()) for label in either))
-    rest = {label: values for label, values in gold.items() if label not in either}
-    if not union:
-        return rest
-    return {**rest, either[0]: (union & pred.get(either[0], set())) or {min(union)}}
+    if not either:
+        return gold, pred
+    wanted = set().union(*(gold.get(label, set()) for label in either))
+    given = set().union(*(pred.get(label, set()) for label in either))
+    hit = {min(wanted & given)} if wanted & given else set()
+    sides = (hit or ({min(wanted)} if wanted else set()), hit | (given - wanted))
+    return tuple({**{k: v for k, v in side.items() if k not in either}, **({either[0]: values} if values else {})}
+                 for side, values in zip((gold, pred), sides))
 
 
 def messages(prompt: str, address: str, shots=()) -> list[dict]:
@@ -144,12 +151,15 @@ def run(system: str, data_path, run_id: str, results_dir="results", device: str 
     records = read_jsonl(data_path)
     if not records:
         raise ValueError(f"{data_path} is empty")
-    shots = spec.shots
+    shots, shot_ids = spec.shots, []
     if n_shots:
         pool = read_jsonl(shots_path)
-        if {r["id"] for r in pool} & {r["id"] for r in records}:  # dev and test are never shown to the model (CLAUDE.md rule 2)
+        require_train(pool, str(shots_path))  # dev and test are never shown to the model (CLAUDE.md rule 2)
+        if {r["id"] for r in pool} & {r["id"] for r in records}:
             raise ValueError("an example address is also in the eval file")
-        shots += tuple((r["text"], answer(r, spec.mapping)) for r in random.Random(seed).sample(pool, n_shots))
+        chosen = random.Random(seed).sample(pool, n_shots)
+        shots += tuple((r["text"], answer(r, spec.mapping)) for r in chosen)
+        shot_ids = [r["id"] for r in chosen]
     device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
     tok = AutoTokenizer.from_pretrained(spec.repo, revision=spec.revision)
     # safetensors only: these are other people's weights, and a pickle file can run code when it is loaded
@@ -159,13 +169,14 @@ def run(system: str, data_path, run_id: str, results_dir="results", device: str 
     answers = generate(net, tok, spec.prompt, [r["text"] for r in records], shots)
     seconds = time.perf_counter() - start
     objects = [parse_json(a) for a in answers]
-    pred = [to_fields(obj, spec.mapping) for obj in objects]
-    gold = [fold(gold_fields(r), p, spec.either) for r, p in zip(records, pred)]
+    folded = [fold(gold_fields(r), to_fields(obj, spec.mapping), spec.either) for r, obj in zip(records, objects)]
+    gold, pred = [g for g, _ in folded], [p for _, p in folded]
     shared = [label for label in LABELS if label in set(spec.mapping.values())]
     res = {"run_id": run_id, "model": system, "data": f"{Path(data_path).parent.name}/{Path(data_path).stem}", "seed": seed,
            "config": {"repo": spec.repo, "revision": spec.revision, "prompt": spec.prompt, "mapping": spec.mapping,
                       "either": list(spec.either), "shared_labels": shared, "n_shots": len(shots),
-                      "shots": str(shots_path) if n_shots else None, "seconds": round(seconds, 1), "device": str(device),
+                      "shots": str(shots_path) if n_shots else None, "shot_ids": shot_ids,
+                      "seconds": round(seconds, 1), "device": str(device),
                       "torch": torch.__version__, "transformers": transformers.__version__},
            "created": datetime.now(timezone.utc).isoformat(timespec="seconds"), "n": len(records),
            "json_valid": sum(obj is not None for obj in objects) / len(records),

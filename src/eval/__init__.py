@@ -36,7 +36,9 @@ def fields_from(text: str, tags: Sequence[str]) -> dict[str, set[str]]:
     """Field -> set of normalised span strings, from the address text and its IOB2 tags."""
     fields: dict[str, set[str]] = {}
     for s, e, label in tags_to_spans(tokenize(text), list(tags)):
-        fields.setdefault(label, set()).add(normalise_value(text[s:e]))
+        value = normalise_value(text[s:e])
+        if value:  # a span of punctuation alone holds nothing
+            fields.setdefault(label, set()).add(value)
     return fields
 
 
