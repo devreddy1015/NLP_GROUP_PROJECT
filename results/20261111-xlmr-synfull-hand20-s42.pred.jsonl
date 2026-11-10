@@ -1,0 +1,20 @@
+{"id": "hand-0001", "tags": ["O", "O", "O", "B-HOUSE", "I-HOUSE", "I-HOUSE", "O", "B-STREET", "I-LOCALITY", "I-LOCALITY", "O", "B-LOCALITY", "O", "B-CITY", "O", "B-STATE", "B-PIN"]}
+{"id": "hand-0002", "tags": ["O", "O", "O", "B-LOCALITY", "O", "B-CITY", "O", "B-STATE", "O", "B-PIN"]}
+{"id": "hand-0003", "tags": ["O", "O", "O", "O", "O", "B-STREET", "I-STREET", "O", "B-LOCALITY", "I-LOCALITY", "O", "B-LOCALITY", "O", "B-CITY", "I-CITY", "I-CITY", "O", "B-PIN"]}
+{"id": "hand-0004", "tags": ["O", "O", "O", "B-STREET", "I-STREET", "O", "B-BUILDING", "I-BUILDING", "O", "B-LANDMARK", "I-LANDMARK", "I-LANDMARK", "O", "B-STREET", "I-STREET", "O", "B-CITY", "B-PIN", "B-STATE", "B-STATE", "I-STATE", "I-STATE", "I-STATE", "I-STATE"]}
+{"id": "hand-0005", "tags": ["O", "O", "O", "O", "O", "B-STREET", "I-STREET", "I-STREET", "O", "B-BUILDING", "I-BUILDING", "O", "B-LOCALITY", "O", "B-CITY"]}
+{"id": "hand-0006", "tags": ["O", "O", "O", "I-HOUSE", "B-LOCALITY", "B-STATE", "B-PIN"]}
+{"id": "hand-0007", "tags": ["O", "O", "O", "O", "O", "O", "B-LOCALITY", "I-LOCALITY", "I-LOCALITY", "O", "O", "O", "B-DISTRICT", "I-DISTRICT", "B-STATE", "I-STATE", "I-STATE", "I-STATE", "O", "B-PIN"]}
+{"id": "hand-0008", "tags": ["O", "O", "O", "B-BUILDING", "I-BUILDING", "O", "B-STREET", "I-STREET", "O", "B-STATE", "B-PIN"]}
+{"id": "hand-0009", "tags": ["O", "O", "O", "B-LANDMARK", "I-LANDMARK", "O", "B-STREET", "I-STREET", "I-STREET", "I-STREET", "I-STREET", "O", "B-CITY", "O", "B-STATE"]}
+{"id": "hand-0010", "tags": ["O", "O", "O", "B-HOUSE", "I-HOUSE", "O", "B-HOUSE", "I-HOUSE", "O", "B-LOCALITY", "I-LOCALITY", "O", "B-CITY", "B-PIN", "O", "O", "B-DISTRICT"]}
+{"id": "hand-0011", "tags": ["O", "O", "O", "O", "B-STREET", "I-STREET", "I-STREET", "O", "B-CITY", "O", "B-STATE", "I-STATE", "B-PIN"]}
+{"id": "hand-0012", "tags": ["O", "O", "O", "O", "B-LANDMARK", "I-LANDMARK", "I-LANDMARK", "O", "B-STREET", "I-STREET", "O", "B-LOCALITY", "O", "B-CITY", "O", "B-STATE", "I-STATE", "I-STATE"]}
+{"id": "hand-0013", "tags": ["O", "O", "O", "B-LOCALITY", "I-LOCALITY", "O", "B-CITY", "O", "B-PIN"]}
+{"id": "hand-0014", "tags": ["O", "O", "O", "B-STREET", "I-STREET", "I-STREET", "O", "B-LOCALITY", "O", "B-CITY", "O", "B-STATE", "B-PIN"]}
+{"id": "hand-0015", "tags": ["O", "O", "O", "B-LANDMARK", "I-LANDMARK", "I-LANDMARK", "I-LANDMARK", "O", "B-HOUSE", "I-HOUSE", "O", "B-CITY", "O", "B-STATE", "B-PIN"]}
+{"id": "hand-0016", "tags": ["O", "O", "O", "B-STREET", "I-STREET", "O", "B-BUILDING", "I-LOCALITY", "I-LOCALITY", "O", "B-LOCALITY", "I-LOCALITY", "O", "B-CITY", "O", "B-STATE", "O", "B-PIN"]}
+{"id": "hand-0017", "tags": ["O", "O", "O", "O", "O", "O", "B-STREET", "I-STREET", "O", "B-CITY", "O", "B-STATE", "B-PIN"]}
+{"id": "hand-0018", "tags": ["O", "O", "O", "O", "B-BUILDING", "I-BUILDING", "O", "B-LOCALITY", "O", "B-LOCALITY", "I-LOCALITY", "O", "B-STATE"]}
+{"id": "hand-0019", "tags": ["O", "O", "O", "B-STREET", "I-STREET", "O", "B-LOCALITY", "O", "B-STATE", "B-PIN"]}
+{"id": "hand-0020", "tags": ["O", "O", "B-STREET", "I-STREET", "O", "B-LANDMARK", "I-LANDMARK", "I-LANDMARK", "O", "B-LOCALITY", "I-LOCALITY", "O", "B-STATE", "B-PIN", "I-PIN"]}

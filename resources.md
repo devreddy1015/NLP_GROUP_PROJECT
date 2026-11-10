@@ -65,7 +65,7 @@ The master list of external links. Add every new link to its section; if a link 
 | Resource | Link | Used for | Check |
 |---|---|---|---|
 | MuRIL base (cased) | https://huggingface.co/google/muril-base-cased | M1 backbone; Apache-2.0; pinned at commit `afd9f36` in `src/models/transformer.py` | loads; fine-tuned on 11 Nov 2026 |
-| XLM-RoBERTa base | https://huggingface.co/FacebookAI/xlm-roberta-base | M2 backbone; MIT; pinned at commit `e73636d` | loads; licence and commit read from the hub on 11 Nov 2026, weights not downloaded yet |
+| XLM-RoBERTa base | https://huggingface.co/FacebookAI/xlm-roberta-base | M2 backbone; MIT; pinned at commit `e73636d` | loads; fine-tuned on 11 Nov 2026 |
 | IndicBERT v1 | https://huggingface.co/ai4bharat/indic-bert | Optional backbone | loads |
 | IndicBERT v2 | https://huggingface.co/ai4bharat/IndicBERTv2-MLM-only | Optional backbone | loads |
 | IndicXlit (transliteration) | https://github.com/AI4Bharat/IndicXlit | Noise family N6 | loads |

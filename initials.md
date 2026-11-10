@@ -173,7 +173,7 @@ Hyperparameters and the number of epochs are fixed once, on the full-noise confi
 - [x] DISTRICT stays (10 Nov): tagged only next to a cue word; otherwise CITY.
 - [ ] Mixing rule for E4 (proposed: upsample the k real addresses to about 10% of the training set; nested subsets 25 ⊂ 50 ⊂ 100 ⊂ 200). Confirm before the first E4 run.
 - [x] M1 hyperparameters (provisional, 11 Nov): 3 epochs, learning rate 1e-4, batch 32, mixed precision; fixed on synthetic dev with one seed (`logs.md`, §13).
-- [ ] Does M2 (XLM-R) reuse the learning rate 1e-4? It was chosen on MuRIL, which starts slowly; XLM-R often trains badly at that rate. Check its first run before any M2 result is reported.
+- [x] M2 (XLM-R) reuses the M1 settings (provisional, 11 Nov): its first run at learning rate 1e-4 trains cleanly (synthetic dev 0.991; `logs.md`). GPU memory is tight: 7.2 of 8.2 GB.
 
 ## 13. Decision log
 | Date | Decision | Why |
@@ -199,6 +199,7 @@ Hyperparameters and the number of epochs are fixed once, on the full-noise confi
 | 10 Nov 2026 | *Provisional.* City names: division names lose trailing direction words; a town that several office names in a district end in becomes the city and leaves the locality. Half the named streets take a real place name. The place-name prefix stays on every synthetic address for now. | On 20 hand-written items the CRF tagged `Bhilai` as LOCALITY in 10 and `X Road` as LOCALITY in 6; 17 of the 20 start with the place name (build-plan C1, C2). |
 | 11 Nov 2026 | *Provisional.* M1 / M2 script: one training run scores every eval file; model commits are pinned; a run ID must end in `-s<seed>`; the tags predicted for each address are saved next to the results file. The hyperparameters in the script are a first guess, not yet the fixed set (§12). | A GPU run does not repeat bit for bit, and the paired bootstrap needs both systems' tags. The first run was still improving after 3 epochs. |
 | 11 Nov 2026 | *Provisional.* M1 hyperparameters fixed: 3 epochs, learning rate 1e-4, batch 32, linear warm-up over 10 % of steps, mixed precision (bf16) on a GPU. | Five MuRIL runs on `full`, seed 42, scored on synthetic dev. Rule set beforehand: the cheapest setting within 0.002 micro F1 of the best (0.9903 against 0.9910). Full precision gives the same score (0.9900) and takes 1.7 times as long. |
+| 11 Nov 2026 | *Provisional.* M2 (XLM-R) reuses the M1 settings unchanged. | One XLM-R run on `full`, seed 42: mean loss per epoch 0.249, 0.015, 0.005 and synthetic dev 0.991, so it does not diverge at learning rate 1e-4. §7 asks for one fixed set for both models. |
 
 ## 14. Class spreadsheet entry (paste into Group 10's row: sheet row 51)
 **Title:** Near Hanuman Mandir: Parsing and Normalising Messy Indian Addresses

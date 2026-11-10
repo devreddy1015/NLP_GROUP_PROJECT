@@ -14,6 +14,17 @@ Newest entries first. Add one entry per work session, and one row per training o
 
 ---
 
+### 2026-11-11 (01:40–01:55): Claude Code, first XLM-R run
+- **Did:** The tuning work is committed (`19da262`). Downloaded `FacebookAI/xlm-roberta-base` at the pinned commit (1.1 GB) and checked its tokenizer on our tokens: nothing is dropped and an address has at most 93 subwords. A comma becomes a bare `▁` followed by `,`, so the tag of a punctuation token is read from the bare `▁`.
+- **Did:** One XLM-R run on `full` (20k, seed 42) at the fixed settings, through the command line.
+- **Results:** the two `xlmr` rows below. Synthetic dev 0.991 micro F1 (MuRIL 0.990, CRF 0.992; the three intervals overlap). hand20 0.759 (MuRIL 0.737, CRF 0.796; intervals overlap, n = 20). Mean loss per epoch 0.249, 0.015, 0.005: it trains cleanly at 1e-4, and much faster than MuRIL (1.475, 0.142, 0.054).
+- **Decided (provisional; row in `initials.md` §13):** M2 reuses the M1 settings unchanged.
+- **Timing:** 361 s to train, 8.5 minutes end to end.
+- **Problems:**
+  - GPU memory is tight for XLM-R: the card peaked at 7,194 MiB of 8,188 (about 540 MiB of that was in use before the run). Another GPU program or much longer addresses could make a run fail. Halving the batch would fix it, but that changes a fixed hyperparameter and needs a decision.
+  - One seed. On synthetic dev the three systems cannot be told apart, so only real data can rank them.
+- **Next:** Step 11 (zero-shot E1). Send the form.
+
 ### 2026-11-11 (00:40–01:35): Claude Code, M1 hyperparameters fixed, mixed precision
 - **Did:** Step 10 is committed (`f526159`). Mixed precision added to `src/models/transformer.py`, tests first: bf16 autocast when training on a GPU, recorded as `amp` in every results file; a CPU run stays in full precision. One test trains the tiny model on the GPU with it on.
 - **Did:** Five tuning runs of MuRIL on `full` (20k, seed 42), each scored on synthetic dev and hand20. They were called from Python as `run(..., epochs=E, lr=LR)`; the command line has no flags for these on purpose. The rule was set before the runs: **the cheapest setting whose synthetic-dev micro F1 is within 0.002 of the best** (0.002 is the half-width of the interval on 2,000 addresses). hand20 was scored but decided nothing.
@@ -154,3 +165,5 @@ Log every training or evaluation run, including failed ones. Fill the **Test F1*
 | 20261111-muril-tune-e5lr1e4-synfull-hand20-s42 | 2026-11-11 | M1 MuRIL, tuning (same model) | synthetic `full`, 20k | 42 | hand20 smoke set, not real dev: 0.768 / 0.701 (CI95 0.667–0.859) | – | `results/20261111-muril-tune-e5lr1e4-synfull-hand20-s42.json` | exact match 0.40; not used to choose |
 | 20261111-muril-tune-e3lr1e4fp32-synfull-dev-s42 | 2026-11-11 | M1 MuRIL, precision check (3 epochs, lr 1e-4, full precision) | synthetic `full`, 20k | 42 | synthetic `full` dev (2,000), not real dev: 0.990 / 0.990 (CI95 0.988–0.992) | – | `results/20261111-muril-tune-e3lr1e4fp32-synfull-dev-s42.json` | exact match 0.95; trained in 532 s; the same score and loss curve as mixed precision, 1.7 times slower |
 | 20261111-muril-tune-e3lr1e4fp32-synfull-hand20-s42 | 2026-11-11 | M1 MuRIL, precision check (same model) | synthetic `full`, 20k | 42 | hand20 smoke set, not real dev: 0.777 / 0.700 (CI95 0.670–0.874) | – | `results/20261111-muril-tune-e3lr1e4fp32-synfull-hand20-s42.json` | exact match 0.45; 0.04 above its mixed-precision twin, which is the noise of a 20-item set |
+| 20261111-xlmr-synfull-dev-s42 | 2026-11-11 | M2 XLM-R (`FacebookAI/xlm-roberta-base` at commit `e73636d`; fixed settings: 3 epochs, lr 1e-4, batch 32, mixed precision) | synthetic `full`, 20k | 42 | synthetic `full` dev (2,000), not real dev: 0.991 / 0.991 (CI95 0.989–0.993) | – | `results/20261111-xlmr-synfull-dev-s42.json` | exact match 0.95; CITY 0.97, LOCALITY 0.96, every other label 0.996 or more; trained in 361 s; mean loss per epoch 0.249 / 0.015 / 0.005; GPU peak 7,194 MiB of 8,188; tags per address in `results/20261111-xlmr-synfull-dev-s42.pred.jsonl` |
+| 20261111-xlmr-synfull-hand20-s42 | 2026-11-11 | M2 XLM-R (same model) | synthetic `full`, 20k | 42 | hand20 smoke set, not real dev: 0.759 / 0.677 (CI95 0.677–0.840) | – | `results/20261111-xlmr-synfull-hand20-s42.json` | exact match 0.35; PIN 1.00, CITY 0.82, STATE 0.80, STREET 0.80, LANDMARK 0.67, LOCALITY 0.61, HOUSE 0.50, BUILDING 0.50, DISTRICT 0.40; between MuRIL (0.737) and the CRF (0.796), intervals overlap |
