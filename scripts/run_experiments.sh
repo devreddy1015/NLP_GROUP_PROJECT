@@ -41,7 +41,8 @@ if [ "$FINAL" = 1 ]; then need data/real/test.jsonl "the real test set is not ex
 if [[ " ${WHAT[*]} " == *" e4 "* ]] && [ "$DRY" = 0 ]; then
   need data/real/train.jsonl "E4 draws its k addresses from the real-train pool"
   pool=$(wc -l < data/real/train.jsonl)  # checked now, not after hours of E2 and E3
-  [ "$pool" -ge "${KS[-1]}" ] || { echo "data/real/train.jsonl holds $pool addresses; E4 needs ${KS[-1]}" >&2; exit 1; }
+  most=${KS[${#KS[@]}-1]}  # not ${KS[-1]}: macOS ships bash 3.2
+  [ "$pool" -ge "$most" ] || { echo "data/real/train.jsonl holds $pool addresses; E4 needs $most" >&2; exit 1; }
 fi
 
 synthetic() { # config [n_train]: generate the set unless it is already there
@@ -55,7 +56,7 @@ train() { # model tag train_file synthetic_config seed
   local evals=("data/synthetic/$config/test.jsonl" data/real/dev.jsonl)
   local ids=("$DATE-$model-$tag-syntest-s$seed" "$DATE-$model-$tag-realdev-s$seed")
   if [ "$FINAL" = 1 ]; then evals+=(data/real/test.jsonl) ids+=("$DATE-$model-$tag-realtest-s$seed"); fi
-  if [ -f "$RESULTS/${ids[-1]}.json" ]; then echo "skip $model $tag s$seed: results exist" >&2; return; fi
+  if [ -f "$RESULTS/${ids[${#ids[@]}-1]}.json" ]; then echo "skip $model $tag s$seed: results exist" >&2; return; fi
   say uv run python -m src.models.transformer --model "$model" --train "$train_file" --seed "$seed" \
     --eval "${evals[@]}" --run-id "${ids[@]}" --results-dir "$RESULTS"
 }
